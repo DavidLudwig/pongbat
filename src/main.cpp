@@ -118,8 +118,8 @@ static void GameInit()
     // TODO: set to SDL_SCANCODE_UNKNOWN for AI control?
     Paddles[0].keyUp = SDL_SCANCODE_LSHIFT;
     Paddles[0].keyDown = SDL_SCANCODE_LCTRL;
-    Paddles[1].keyUp = SDL_SCANCODE_UP;
-    Paddles[1].keyDown = SDL_SCANCODE_DOWN;
+    Paddles[1].keyUp = SDL_SCANCODE_RETURN;
+    Paddles[1].keyDown = SDL_SCANCODE_RSHIFT;
     
     // Spawn a ball
     Balls[0].cx = ScreenWidth / 2.f;
