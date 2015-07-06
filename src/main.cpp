@@ -7,7 +7,12 @@
 //
 
 #include <SDL.h>
-#include <math.h>
+
+// Math Utility Function(s)
+int MathRound(float x)
+{
+    return (x + 0.5f);
+}
 
 // App + Display
 static const uint16_t DefaultWindowWidth = 1024;
@@ -223,10 +228,10 @@ static void GameDraw()
     // Balls
     for (uint8_t i = 0; i < BallCount; ++i) {
         SDL_Rect ballRect = {
-            (int)lround(Balls[i].cx - BallRadius),
-            (int)lround(Balls[i].cy - BallRadius),
-            (int)lround(BallRadius * 2),
-            (int)lround(BallRadius * 2)
+            MathRound(Balls[i].cx - BallRadius),
+            MathRound(Balls[i].cy - BallRadius),
+            MathRound(BallRadius * 2),
+            MathRound(BallRadius * 2)
         };
         SDL_FillRect(Screen, &ballRect, SDL_MapRGB(Screen->format, 0, 0, 0));
     }
