@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# Utility function(s)
+die() {
+	echo "ERROR: $* (status $?)" 1>&2
+	exit 1
+}
+
 # Setup common vars
 PROJECT_DIR=$( cd -P "$( dirname "$0" )/.." && pwd )
 BUILD_DIR="$PROJECT_DIR/build/emscripten"
@@ -23,8 +29,7 @@ fi
 
 # Setup shell for Emscripten SDK use:
 if ! type -p emsdk_env.sh > /dev/null ; then
-	echo "Can't find emsdk_env.sh (part of Emscripten SDK)!"
-	exit 1
+	die "Can't find emsdk_env.sh (part of Emscripten SDK)!"
 fi
 echo "Setting up Emscripten..."
 . emsdk_env.sh
@@ -32,20 +37,17 @@ echo "Setting up Emscripten..."
 # Create the build directory, then cd to it
 if [ ! -d "$BUILD_DIR" ]; then
 	echo "Creating build dir...: $BUILD_DIR"
-	mkdir -p "$BUILD_DIR"
+	mkdir -p "$BUILD_DIR" || die "Can't create 'BUILD_DIR'"
 fi
-cd "$BUILD_DIR"
-
+cd "$BUILD_DIR" || die "Can't 'cd' to 'BUILD_DIR'"
+	
 # Delete old build file(s)
 echo "Cleaning..."
-rm -rf *
+rm -rf pongbat* || die "Couldn't clean old files"
 
 # Rebuild
 echo "Building..."
-if ! emcc ../../src/main.cpp -s USE_SDL=2 -O3 -o pongbat.html; then
-	echo "Script exiting, as compile failed"
-	exit 1
-fi
+emcc ../../src/main.cpp -s USE_SDL=2 -O3 -o pongbat.html || die "Compile failed"
 
 # Install
 if [ "$PONGBAT_INSTALL_DIR" != "" ]; then
