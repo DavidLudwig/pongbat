@@ -8,6 +8,10 @@
 
 #include <SDL.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 // Math Utility Function(s)
 int MathRound(float x)
 {
@@ -352,10 +356,13 @@ int main(int argc, char * argv[])
     GameInit();
 
     // Game loop
-    // TODO: use callback(s) on Emscripten and WinRT to invoke AppUpdate(), as is appropriate.
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop(AppUpdate, 0, 1);
+#else
     while (AppRunning) {
         AppUpdate();
     }
+#endif
     
     return 0;
 }
