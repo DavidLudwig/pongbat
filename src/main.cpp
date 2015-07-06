@@ -161,11 +161,11 @@ static void GameUpdate()
         
         // Move the paddle, making sure not to go past walls
         Paddles[i].y += Paddles[i].vy;
-        if (Paddles[i].y <= 0.f) {
+        if (Paddles[i].Top() <= 0.f) {
             // Stop at the top wall
             Paddles[i].y = 0.f;
             Paddles[i].vy = 0.f;
-        } else if (Paddles[i].y + PaddleMaxH >= ScreenHeight) {
+        } else if (Paddles[i].Bottom() >= ScreenHeight) {
             // Stop at the bottom wall
             Paddles[i].y = ScreenHeight - PaddleMaxH;
             Paddles[i].vy = 0.f;
@@ -187,12 +187,12 @@ static void GameUpdate()
             // Collision, top-wall
             Balls[i].cy = BallRadius;
             Balls[i].vy *= -1.f;
-        } else if ((Balls[i].Left()) > (float)ScreenWidth) {
-            // Collision, left-wall
+        } else if ((Balls[i].Right()) > (float)ScreenWidth) {
+            // Collision, right-wall
             Balls[i].cx = ((float)ScreenWidth) - BallRadius;
             Balls[i].vx *= -1.f;
-        } else if ((Balls[i].Right()) < 0.f) {
-            // Collision, right-wall
+        } else if ((Balls[i].Left()) < 0.f) {
+            // Collision, left-wall
             Balls[i].cx = BallRadius;
             Balls[i].vx *= -1.f;
         }
@@ -232,8 +232,8 @@ static void GameDraw()
     // Balls
     for (uint8_t i = 0; i < BallCount; ++i) {
         SDL_Rect ballRect = {
-            MathRound(Balls[i].cx - BallRadius),
-            MathRound(Balls[i].cy - BallRadius),
+            MathRound(Balls[i].Left()),
+            MathRound(Balls[i].Top()),
             MathRound(BallRadius * 2),
             MathRound(BallRadius * 2)
         };
