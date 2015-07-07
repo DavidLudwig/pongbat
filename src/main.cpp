@@ -31,6 +31,9 @@ static const uint16_t ScreenHeight = 480;
 static uint8_t AppRunning = 1;
 static uint32_t NextGameTickAt = 0;
 
+// HUD
+static const uint16_t HUDHeight = 32;
+
 // Paddles
 static const float PaddleVStep = 0.11f;
 static const int16_t PaddleMaxH = 128;
@@ -108,12 +111,12 @@ static uint8_t BallCount = 0;
 
 static void PaddleDraw(uint16_t x, int16_t y, Uint8 r, Uint8 g, Uint8 b)
 {
-    int16_t yoff_max = SDL_min(PaddleMaxH, ScreenHeight - y);   // Make sure drawing doesn't occur below ScreenHeight (DavidL: is this needed?)
+    int16_t yoff_max = SDL_min(PaddleMaxH, ScreenHeight - HUDHeight - y);   // Make sure drawing doesn't occur below ScreenHeight (DavidL: is this needed?)
     for (int16_t yoff = 0; yoff < yoff_max; ++yoff) {
         for (int16_t xoff = 0; xoff < PaddleWidth; ++xoff) {
             int32_t pixoff = (((y + yoff) * Screen->pitch) + ((x + xoff) << 2));
             SDL_assert_paranoid(pixoff >= 0);
-            SDL_assert_paranoid(pixoff < (ScreenHeight * Screen->pitch));
+            SDL_assert_paranoid(pixoff < ((ScreenHeight - HUDHeight) * Screen->pitch));
             ((uint8_t *)(Screen->pixels))[pixoff + 0] = r;
             ((uint8_t *)(Screen->pixels))[pixoff + 1] = g;
             ((uint8_t *)(Screen->pixels))[pixoff + 2] = b;
@@ -125,7 +128,7 @@ static void GameInit()
 {
     // Paddle position
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
-        Paddles[i].y = (ScreenHeight - PaddleMaxH) / 2.f;
+        Paddles[i].y = (ScreenHeight - HUDHeight - PaddleMaxH) / 2.f;
         Paddles[i].vy = 0.f;
     }
     Paddles[0].x = 16;
@@ -142,7 +145,7 @@ static void GameInit()
     
     // Spawn a ball
     Balls[0].cx = ScreenWidth / 2.f;
-    Balls[0].cy = ScreenHeight / 2.f;
+    Balls[0].cy = (ScreenHeight - HUDHeight) / 2.f;
     Balls[0].vx = -1.3f;
     Balls[0].vy = -0.7f;
     BallCount = 1;
@@ -184,9 +187,9 @@ static void GameUpdate()
             // Stop at the top wall
             Paddles[i].y = 0.f;
             Paddles[i].vy = 0.f;
-        } else if (Paddles[i].Bottom() >= ScreenHeight) {
+        } else if (Paddles[i].Bottom() >= (ScreenHeight - HUDHeight)) {
             // Stop at the bottom wall
-            Paddles[i].y = ScreenHeight - PaddleMaxH;
+            Paddles[i].y = ScreenHeight - HUDHeight - PaddleMaxH;
             Paddles[i].vy = 0.f;
         }
     }
@@ -198,9 +201,9 @@ static void GameUpdate()
         Balls[i].cy += Balls[i].vy;
 
         // Ball/wall collisions
-        if ((Balls[i].Bottom()) > (float)ScreenHeight) {
+        if ((Balls[i].Bottom()) > (float)(ScreenHeight - HUDHeight)) {
             // Collision, bottom-wall
-            Balls[i].cy = ((float)ScreenHeight) - BallRadius;
+            Balls[i].cy = ((float)(ScreenHeight - HUDHeight)) - BallRadius;
             Balls[i].vy *= -1.f;
             Balls[i].ChopVY();
         } else if ((Balls[i].Top()) < 0.f) {
@@ -246,8 +249,15 @@ static void GameUpdate()
 
 static void GameDraw()
 {
+    SDL_Rect r;
+    
     // Background
-    SDL_FillRect(Screen, NULL, SDL_MapRGB(Screen->format, 0xaa, 0xaa, 0xaa));
+    r = {0, 0, ScreenWidth, ScreenHeight - HUDHeight};
+    SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xaa, 0xaa, 0xaa));
+    
+    // HUD
+    r = {0, ScreenHeight - HUDHeight, ScreenWidth, HUDHeight};
+    SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0x55, 0x55, 0x55));
     
     // Paddles
     PaddleDraw(Paddles[0].x, (int16_t)Paddles[0].y, 0xff, 0x00, 0x00);
