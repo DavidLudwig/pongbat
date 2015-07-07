@@ -34,6 +34,7 @@ static uint32_t NextGameTickAt = 0;
 static const float PaddleVStep = 0.14f;
 static const int16_t PaddleMaxH = 128;
 static const uint16_t PaddleWidth = 16;
+static const float PaddleToBallFriction = 0.5f;
 struct Paddle {
     float y;
     float vy;
@@ -84,6 +85,9 @@ struct Ball {
         return cy + BallRadius;
     }
     
+//    float Speed() const {
+//        return SDL_sqrtf((vx * vx) + (vy * vy));
+//    }
 } Balls[32];
 static uint8_t BallCount = 0;
 
@@ -214,6 +218,8 @@ static void GameUpdate()
                 if ((Balls[i].vx * Paddles[j].ballBounceDirection) < 0) {
                     // Bounce the ball!
                     Balls[i].vx *= -1.f;
+                    Balls[i].vy += (Paddles[j].vy * PaddleToBallFriction);
+//                    SDL_Log("speed, paddle: %f", Balls[i].Speed());
                 }
             }
         }
