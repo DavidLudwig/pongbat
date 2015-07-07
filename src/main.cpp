@@ -19,6 +19,14 @@ int MathRound(float x)
     return (x + 0.5f);
 }
 
+void RectSet(SDL_Rect * r, int x, int y, int w, int h)
+{
+    r->x = x;
+    r->y = y;
+    r->w = w;
+    r->h = h;
+}
+
 // App + Display
 static const uint16_t DefaultWindowWidth = 640;
 static const uint16_t DefaultWindowHeight = 480;
@@ -252,11 +260,11 @@ static void GameDraw()
     SDL_Rect r;
     
     // Background
-    r = {0, 0, ScreenWidth, ScreenHeight - HUDHeight};
+    RectSet(&r, 0, 0, ScreenWidth, ScreenHeight - HUDHeight);
     SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xaa, 0xaa, 0xaa));
     
     // HUD
-    r = {0, ScreenHeight - HUDHeight, ScreenWidth, HUDHeight};
+    RectSet(&r, 0, ScreenHeight - HUDHeight, ScreenWidth, HUDHeight);
     SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0x55, 0x55, 0x55));
     
     // Paddles
