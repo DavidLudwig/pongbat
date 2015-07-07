@@ -36,7 +36,7 @@ static const uint16_t HUDHeight = 32;
 
 // Paddles
 static const float PaddleVStep = 0.11f;
-static const int16_t PaddleMaxH = 128;
+static const int16_t PaddleMaxH = 150;
 static const uint16_t PaddleWidth = 16;
 static const float PaddleToBallFriction = 0.5f;
 struct Paddle {
