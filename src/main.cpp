@@ -293,8 +293,7 @@ static void AppUpdate()
     }
 
     //
-    // Update game-state at a fixed frame-rate, while drawing as fast as
-    // we can.
+    // Update game-state at a fixed rate, while drawing as fast as we can.
     //
     if (NextGameTickAt == 0) {
         NextGameTickAt = tick;
