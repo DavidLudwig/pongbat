@@ -20,8 +20,8 @@ int MathRound(float x)
 }
 
 // App + Display
-static const uint16_t DefaultWindowWidth = 800;
-static const uint16_t DefaultWindowHeight = 600;
+static const uint16_t DefaultWindowWidth = 640;
+static const uint16_t DefaultWindowHeight = 480;
 static SDL_Window * Window = 0;
 static SDL_Renderer * Renderer = 0;
 static SDL_Surface * Screen = 0;
