@@ -64,6 +64,7 @@ struct Paddle {
 
 // Balls
 static const float BallRadius = 8.f;
+static const float BallChopVelocityY = 2.5f;
 struct Ball {
     float cx;   // Center X
     float cy;   // Center Y
@@ -89,6 +90,19 @@ struct Ball {
 //    float Speed() const {
 //        return SDL_sqrtf((vx * vx) + (vy * vy));
 //    }
+    
+    // Limits y-velocity to a global threshold.  This prevents the ball from
+    // bouncing up and down too fast.
+    void ChopVY() {
+        if (vy > BallChopVelocityY) {
+            vy = BallChopVelocityY;
+//            SDL_Log("vy, fix: %f", vy);
+        } else if (vy < -BallChopVelocityY) {
+            vy = -BallChopVelocityY;
+//            SDL_Log("vy, fix: %f", vy);
+        }
+    }
+    
 } Balls[32];
 static uint8_t BallCount = 0;
 
@@ -188,10 +202,12 @@ static void GameUpdate()
             // Collision, bottom-wall
             Balls[i].cy = ((float)ScreenHeight) - BallRadius;
             Balls[i].vy *= -1.f;
+            Balls[i].ChopVY();
         } else if ((Balls[i].Top()) < 0.f) {
             // Collision, top-wall
             Balls[i].cy = BallRadius;
             Balls[i].vy *= -1.f;
+            Balls[i].ChopVY();
         } else if ((Balls[i].Right()) > (float)ScreenWidth) {
             // Collision, right-wall
             Balls[i].cx = ((float)ScreenWidth) - BallRadius;
@@ -221,6 +237,7 @@ static void GameUpdate()
                     Balls[i].vx *= -1.f;
                     Balls[i].vy += (Paddles[j].vy * PaddleToBallFriction);
 //                    SDL_Log("speed, paddle: %f", Balls[i].Speed());
+//                    SDL_Log("vy, paddle: %f", Balls[i].vy);
                 }
             }
         }
