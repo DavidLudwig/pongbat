@@ -32,7 +32,7 @@ static uint8_t AppRunning = 1;
 static uint32_t NextGameTickAt = 0;
 
 // Paddles
-static const float PaddleVStep = 0.14f;
+static const float PaddleVStep = 0.11f;
 static const int16_t PaddleMaxH = 128;
 static const uint16_t PaddleWidth = 16;
 static const float PaddleToBallFriction = 0.5f;
