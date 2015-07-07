@@ -74,7 +74,7 @@ struct Paddle {
 } Paddles[2];
 
 // Balls
-static const float BallRadius = 8.f;
+static const float BallRadius = 10.f;
 static const float BallChopVelocityY = 2.5f;
 struct Ball {
     float cx;   // Center X
