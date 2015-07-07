@@ -13,6 +13,61 @@
 #include <emscripten.h>
 #endif
 
+#if __MACOSX__
+#include <unistd.h>     // for chdir(), ...
+#endif
+
+// Images
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_PNG
+#include "stb_image.h"
+
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+static const uint32_t ImageRMask = 0xff000000;
+static const uint32_t ImageGMask = 0x00ff0000;
+static const uint32_t ImageBMask = 0x0000ff00;
+static const uint32_t ImageAMask = 0x000000ff;
+#else
+static const uint32_t ImageRMask = 0x000000ff;
+static const uint32_t ImageGMask = 0x0000ff00;
+static const uint32_t ImageBMask = 0x00ff0000;
+static const uint32_t ImageAMask = 0xff000000;
+#endif
+
+typedef uint8_t ImageID;
+static SDL_Surface * Images[64];
+static ImageID ImageNext = 1;
+static ImageID ImageIDBlueBall;
+static ImageID ImageIDRedBall;
+
+ImageID LoadImage(const char * filename)
+{
+    int w, h, n;
+    void * data = stbi_load(filename, &w, &h, &n, 4);
+    if ( ! data) {
+        SDL_Log("%s, stbi_load failed for %s, \"%s\"",
+                __FUNCTION__,
+                (filename ? filename : NULL),
+                stbi_failure_reason());
+        return 0;
+    }
+    
+    if (ImageNext > (SDL_arraysize(Images) - 1)) {
+        SDL_Log("%s, Out of ImageIDs!", __FUNCTION__);
+        return 0;
+    }
+
+    Images[ImageNext] = SDL_CreateRGBSurfaceFrom(data, w, h, 32, w * 4, ImageRMask, ImageGMask, ImageBMask, ImageAMask);
+    if ( ! Images[ImageNext]) {
+        SDL_Log("%s, SDL_CreateRGBSurfaceFrom failed: %s",
+                __FUNCTION__,
+                SDL_GetError());
+        return 0;
+    }
+    
+    return ImageNext++;
+}
+
 // Math Utility Function(s)
 int MathRound(float x)
 {
@@ -279,7 +334,8 @@ static void GameDraw()
             MathRound(BallRadius * 2),
             MathRound(BallRadius * 2)
         };
-        SDL_FillRect(Screen, &ballRect, SDL_MapRGB(Screen->format, 0, 0, 0));
+        SDL_BlitSurface(Images[ImageIDBlueBall], NULL, Screen, &ballRect);
+        //SDL_FillRect(Screen, &ballRect, SDL_MapRGB(Screen->format, 0, 0, 0));
     }
 }
 
@@ -387,6 +443,18 @@ int main(int argc, char * argv[])
 {
     // Init SDL, and other low-level systems
     if (AppInit() != 0) {
+        return 1;
+    }
+
+    // Make sure 'Data' directory (game-assets) can be easily found
+#if __MACOSX__
+    chdir(SDL_GetBasePath());
+#endif
+    
+    if ( ! ((ImageIDBlueBall = LoadImage("Data/Images/BallBlue.png"))) &&
+           ((ImageIDRedBall = LoadImage("Data/Images/BallRed.png")))
+        )
+    {
         return 1;
     }
 

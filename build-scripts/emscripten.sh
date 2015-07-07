@@ -34,12 +34,12 @@ fi
 echo "Setting up Emscripten..."
 . emsdk_env.sh
 
-# Create the build directory, then cd to it
+# Create the build directory
 if [ ! -d "$BUILD_DIR" ]; then
 	echo "Creating build dir...: $BUILD_DIR"
 	mkdir -p "$BUILD_DIR" || die "Can't create 'BUILD_DIR'"
 fi
-cd "$BUILD_DIR" || die "Can't 'cd' to 'BUILD_DIR'"
+cd "$PROJECT_DIR" || die "Can't 'cd' to 'PROJECT_DIR'"
 	
 # Delete old build file(s)
 echo "Cleaning..."
@@ -47,9 +47,14 @@ rm -rf pongbat* || die "Couldn't clean old files"
 
 # Rebuild
 echo "Building..."
-emcc ../../src/main.cpp -s USE_SDL=2 -O3 -o pongbat.html || die "Compile failed"
+emcc src/main.cpp -s USE_SDL=2 -O3 \
+	-o "$BUILD_DIR/pongbat.html" \
+	--preload-file "Data/Images/BallBlue.png" \
+	--preload-file "Data/Images/BallRed.png" \
+	|| die "Compile failed"
 
 # Install
+cd "$BUILD_DIR" || die "Can't 'cd' to 'BUILD_DIR'"
 if [ "$PONGBAT_INSTALL_DIR" != "" ]; then
 	echo "Installing..."
 	if echo "$PONGBAT_INSTALL_DIR" | grep -q ":" > /dev/null; then
