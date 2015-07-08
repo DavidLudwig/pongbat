@@ -112,7 +112,7 @@ static const uint16_t HUDHeight = 32;
 #pragma mark - Balls
 // Balls
 static const float BallRadius = 10.f;
-static const float BallChopVelocityY = 2.5f;
+static const float BallChopVelocityY = 2.0f;
 enum BallType : uint8_t {
     BallTypeNoPlayer = 0,
     BallTypeBlue,
