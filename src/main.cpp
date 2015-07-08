@@ -7,6 +7,8 @@
 //  for details.
 //
 
+#pragma mark - Main Headers
+
 #include <SDL.h>
 
 #ifdef __EMSCRIPTEN__
@@ -17,6 +19,8 @@
 #include <unistd.h>     // for chdir(), ...
 #endif
 
+
+#pragma mark - Images
 // Images
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
@@ -69,7 +73,9 @@ ImageID LoadImage(const char * filename)
     return ImageNext++;
 }
 
-// Math Utility Function(s)
+
+#pragma mark - Math
+// Math
 int MathRound(float x)
 {
     return (x + 0.5f);
@@ -83,7 +89,9 @@ void RectSet(SDL_Rect * r, int x, int y, int w, int h)
     r->h = h;
 }
 
-// App + Display
+
+#pragma mark - App
+// App
 static const uint16_t DefaultWindowWidth = 640;
 static const uint16_t DefaultWindowHeight = 480;
 static SDL_Window * Window = 0;
@@ -95,9 +103,13 @@ static const uint16_t ScreenHeight = 480;
 static uint8_t AppRunning = 1;
 static uint32_t NextGameTickAt = 0;
 
+
+#pragma mark - HUD
 // HUD
 static const uint16_t HUDHeight = 32;
 
+
+#pragma mark - Balls
 // Balls
 static const float BallRadius = 10.f;
 static const float BallChopVelocityY = 2.5f;
@@ -148,6 +160,8 @@ struct Ball {
 } Balls[32];
 static uint8_t BallCount = 0;
 
+
+#pragma mark - Paddles
 // Paddles
 static const float PaddleVStep = 0.1f;
 static const int16_t PaddleMaxH = 150;
@@ -179,6 +193,9 @@ struct Paddle {
         return y + PaddleMaxH;
     }
 } Paddles[2];
+
+
+#pragma mark - Misc Game + App Code
 
 static void PaddleDraw(uint16_t x, int16_t y, Uint8 r, Uint8 g, Uint8 b)
 {
