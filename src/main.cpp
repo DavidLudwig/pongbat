@@ -152,7 +152,7 @@ static uint8_t BallCount = 0;
 static const float PaddleVStep = 0.1f;
 static const int16_t PaddleMaxH = 150;
 static const uint16_t PaddleWidth = 16;
-static const float PaddleToBallFriction = 0.5f;
+static const float PaddleToBallFriction = 1.f;
 struct Paddle {
     float y;
     float vy;
