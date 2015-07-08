@@ -47,9 +47,10 @@ rm -rf pongbat* || die "Couldn't clean old files"
 
 # Rebuild
 echo "Building..."
-emcc src/main.cpp -s USE_SDL=2 -O3 \
+emcc src/main.cpp -s USE_SDL=2 -O3 -std=c++11 \
 	-o "$BUILD_DIR/pongbat.html" \
 	--preload-file "Data/Images/BallBlue.png" \
+	--preload-file "Data/Images/BallNoPlayer.png" \
 	--preload-file "Data/Images/BallRed.png" \
 	|| die "Compile failed"
 
