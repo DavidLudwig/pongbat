@@ -37,8 +37,9 @@ static const uint32_t ImageAMask = 0xff000000;
 typedef uint8_t ImageID;
 static SDL_Surface * Images[64];
 static ImageID ImageNext = 1;
-static ImageID ImageIDBlueBall;
-static ImageID ImageIDRedBall;
+static ImageID ImageIDBallBlue;
+static ImageID ImageIDBallNoPlayer;
+static ImageID ImageIDBallRed;
 
 ImageID LoadImage(const char * filename)
 {
@@ -97,45 +98,20 @@ static uint32_t NextGameTickAt = 0;
 // HUD
 static const uint16_t HUDHeight = 32;
 
-// Paddles
-static const float PaddleVStep = 0.1f;
-static const int16_t PaddleMaxH = 150;
-static const uint16_t PaddleWidth = 16;
-static const float PaddleToBallFriction = 0.5f;
-struct Paddle {
-    float y;
-    float vy;
-    uint16_t x : 14;
-    signed ballBounceDirection : 2;
-    
-    SDL_Scancode keyUp;
-    SDL_Scancode keyDown;
-    
-    uint16_t Left() const {
-        return x;
-    }
-    
-    uint16_t Right() const {
-        return x + PaddleWidth;
-    }
-    
-    float Top() const {
-        return y;
-    }
-    
-    float Bottom() const {
-        return y + PaddleMaxH;
-    }
-} Paddles[2];
-
 // Balls
 static const float BallRadius = 10.f;
 static const float BallChopVelocityY = 2.5f;
+enum BallType : uint8_t {
+    BallTypeNoPlayer = 0,
+    BallTypeBlue,
+    BallTypeRed
+};
 struct Ball {
     float cx;   // Center X
     float cy;   // Center Y
     float vx;
     float vy;
+    BallType type;
     
     float Left() const {
         return cx - BallRadius;
@@ -172,6 +148,38 @@ struct Ball {
 } Balls[32];
 static uint8_t BallCount = 0;
 
+// Paddles
+static const float PaddleVStep = 0.1f;
+static const int16_t PaddleMaxH = 150;
+static const uint16_t PaddleWidth = 16;
+static const float PaddleToBallFriction = 0.5f;
+struct Paddle {
+    float y;
+    float vy;
+    uint16_t x : 14;
+    signed ballBounceDirection : 2;
+    BallType ballType;
+    
+    SDL_Scancode keyUp;
+    SDL_Scancode keyDown;
+    
+    uint16_t Left() const {
+        return x;
+    }
+    
+    uint16_t Right() const {
+        return x + PaddleWidth;
+    }
+    
+    float Top() const {
+        return y;
+    }
+    
+    float Bottom() const {
+        return y + PaddleMaxH;
+    }
+} Paddles[2];
+
 static void PaddleDraw(uint16_t x, int16_t y, Uint8 r, Uint8 g, Uint8 b)
 {
     int16_t yoff_max = SDL_min(PaddleMaxH, ScreenHeight - HUDHeight - y);   // Make sure drawing doesn't occur below ScreenHeight (DavidL: is this needed?)
@@ -194,10 +202,14 @@ static void GameInit()
         Paddles[i].y = (ScreenHeight - HUDHeight - PaddleMaxH) / 2.f;
         Paddles[i].vy = 0.f;
     }
+    
     Paddles[0].x = 16;
     Paddles[0].ballBounceDirection = 1;
+    Paddles[0].ballType = BallTypeBlue;
+
     Paddles[1].x = ScreenWidth - 32;
     Paddles[1].ballBounceDirection = -1;
+    Paddles[1].ballType = BallTypeRed;
     
     // Paddle input keys
     // TODO: set to SDL_SCANCODE_UNKNOWN for AI control?
@@ -211,6 +223,7 @@ static void GameInit()
     Balls[0].cy = (ScreenHeight - HUDHeight) / 2.f;
     Balls[0].vx = -1.3f;
     Balls[0].vy = -0.7f;
+    Balls[0].type = BallTypeNoPlayer;
     BallCount = 1;
 }
 
@@ -304,6 +317,7 @@ static void GameUpdate()
                     Balls[i].vy += (Paddles[j].vy * PaddleToBallFriction);
 //                    SDL_Log("speed, paddle: %f", Balls[i].Speed());
 //                    SDL_Log("vy, paddle: %f", Balls[i].vy);
+                    Balls[i].type = Paddles[j].ballType;
                 }
             }
         }
@@ -334,8 +348,19 @@ static void GameDraw()
             MathRound(BallRadius * 2),
             MathRound(BallRadius * 2)
         };
-        SDL_BlitSurface(Images[ImageIDBlueBall], NULL, Screen, &ballRect);
-        //SDL_FillRect(Screen, &ballRect, SDL_MapRGB(Screen->format, 0, 0, 0));
+        
+        ImageID ballImageID;
+        switch (Balls[i].type) {
+            case BallTypeBlue:      ballImageID = ImageIDBallBlue;      break;
+            case BallTypeNoPlayer:  ballImageID = ImageIDBallNoPlayer;  break;
+            case BallTypeRed:       ballImageID = ImageIDBallRed;       break;
+            default:                ballImageID = 0;
+        }
+        if ( ! ballImageID) {
+            SDL_FillRect(Screen, &ballRect, SDL_MapRGB(Screen->format, 0, 0, 0));
+        } else {
+            SDL_BlitSurface(Images[ballImageID], NULL, Screen, &ballRect);
+        }
     }
 }
 
@@ -451,9 +476,10 @@ int main(int argc, char * argv[])
     chdir(SDL_GetBasePath());
 #endif
     
-    if ( ! ((ImageIDBlueBall = LoadImage("Data/Images/BallBlue.png"))) &&
-           ((ImageIDRedBall = LoadImage("Data/Images/BallRed.png")))
-        )
+    if ( ! ((ImageIDBallBlue = LoadImage("Data/Images/BallBlue.png")) &&
+            (ImageIDBallNoPlayer = LoadImage("Data/Images/BallNoPlayer.png")) &&
+            (ImageIDBallRed = LoadImage("Data/Images/BallRed.png"))
+            ))
     {
         return 1;
     }
