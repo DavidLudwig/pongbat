@@ -176,6 +176,7 @@ struct Paddle {
     
     SDL_Scancode keyUp;
     SDL_Scancode keyDown;
+    SDL_Scancode keyLaser;
     
     uint16_t Left() const {
         return x;
@@ -193,6 +194,17 @@ struct Paddle {
         return y + PaddleMaxH;
     }
 } Paddles[2];
+
+
+#pragma mark - Lasers
+// Lasers
+static const float LaserMagnitudeStep = -0.2f;
+static const float LaserInitialMagnitude = 8.f;
+struct Laser {
+    float cy;
+    float magnitude;  // laser height = magnitude * 2.f
+} Lasers[2];
+
 
 
 #pragma mark - Misc Game + App Code
@@ -232,8 +244,15 @@ static void GameInit()
     // TODO: set to SDL_SCANCODE_UNKNOWN for AI control?
     Paddles[0].keyUp = SDL_SCANCODE_LSHIFT;
     Paddles[0].keyDown = SDL_SCANCODE_LCTRL;
+    Paddles[0].keyLaser = SDL_SCANCODE_Z;
     Paddles[1].keyUp = SDL_SCANCODE_RETURN;
     Paddles[1].keyDown = SDL_SCANCODE_RSHIFT;
+    Paddles[1].keyLaser = SDL_SCANCODE_SLASH;
+    
+    // Reset lasers
+    for (uint8_t i = 0; i < SDL_arraysize(Lasers); ++i) {
+        Lasers[i].magnitude = 0.f;
+    }
     
     // Spawn a ball
     Balls[0].cx = ScreenWidth / 2.f;
@@ -249,6 +268,17 @@ static void GameUpdate()
     // Get pressed-state for all keyboard keys
     const Uint8 * keyState = SDL_GetKeyboardState(NULL);
     
+    // Laser-magnitude updates
+    for (uint8_t i = 0; i < SDL_arraysize(Lasers); ++i) {
+        if (Lasers[i].magnitude == 0.f) {
+            continue;
+        }
+        Lasers[i].magnitude += LaserMagnitudeStep;
+        if (Lasers[i].magnitude < 0.f) {
+            Lasers[i].magnitude = 0.f;
+        }
+    }
+
     // Paddle updates
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
         // Adjust paddle velocity
@@ -284,6 +314,14 @@ static void GameUpdate()
             // Stop at the bottom wall
             Paddles[i].y = ScreenHeight - HUDHeight - PaddleMaxH;
             Paddles[i].vy = 0.f;
+        }
+        
+        // Fire lasers
+        if (Lasers[i].magnitude == 0.f) {
+            if (keyState[Paddles[i].keyLaser]) {
+                Lasers[i].magnitude = LaserInitialMagnitude;
+                Lasers[i].cy = ((Paddles[i].Bottom() - Paddles[i].Top()) / 2.f) + Paddles[i].Top();
+            }
         }
     }
     
@@ -356,6 +394,27 @@ static void GameDraw()
     // Paddles
     PaddleDraw(Paddles[0].x, (int16_t)Paddles[0].y, 0xff, 0x00, 0x00);
     PaddleDraw(Paddles[1].x, (int16_t)Paddles[1].y, 0x00, 0x00, 0xff);
+    
+    // Lasers
+    for (uint8_t i = 0; i < SDL_arraysize(Lasers); ++i) {
+        if (Lasers[i].magnitude == 0.f) {
+            continue;
+        }
+        switch (i) {
+            case 0: {
+                RectSet(&r, Paddles[0].Right(),               MathRound(Lasers[i].cy - Lasers[i].magnitude),
+                            ScreenWidth - Paddles[0].Right(), MathRound(Lasers[i].magnitude * 2.f));
+            } break;
+            case 1: {
+                RectSet(&r, 0,                                MathRound(Lasers[i].cy - Lasers[i].magnitude),
+                            Paddles[1].Left(),                MathRound(Lasers[i].magnitude * 2.f));
+            } break;
+            default: {
+                SDL_assert_always(false);
+            } break;
+        }
+        SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xff, 0xff, 0x00));
+    }
     
     // Balls
     for (uint8_t i = 0; i < BallCount; ++i) {
