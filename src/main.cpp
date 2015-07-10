@@ -401,18 +401,12 @@ static void GameDraw()
             continue;
         }
         switch (i) {
-            case 0: {
-                RectSet(&r, Paddles[0].Right(),               MathRound(Lasers[i].cy - Lasers[i].magnitude),
-                            ScreenWidth - Paddles[0].Right(), MathRound(Lasers[i].magnitude * 2.f));
-            } break;
-            case 1: {
-                RectSet(&r, 0,                                MathRound(Lasers[i].cy - Lasers[i].magnitude),
-                            Paddles[1].Left(),                MathRound(Lasers[i].magnitude * 2.f));
-            } break;
-            default: {
-                SDL_assert_always(false);
-            } break;
+            case 0:  r.x = Paddles[0].Right();  r.w = ScreenWidth - Paddles[0].Right();  break;
+            case 1:  r.x = 0;                   r.w = Paddles[1].Left();                 break;
+            default: SDL_assert_always(false);                                           break;
         }
+        r.y = MathRound(Lasers[i].cy - Lasers[i].magnitude);
+        r.h = MathRound(Lasers[i].magnitude * 2.f);
         SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xff, 0xff, 0x00));
     }
     
