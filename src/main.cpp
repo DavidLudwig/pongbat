@@ -20,8 +20,8 @@
 #endif
 
 
-#pragma mark - Images
 // Images
+#pragma mark - Images
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #include "stb_image.h"
@@ -74,8 +74,8 @@ ImageID LoadImage(const char * filename)
 }
 
 
-#pragma mark - Math
 // Math
+#pragma mark - Math
 int MathRound(float x)
 {
     return (x + 0.5f);
@@ -90,8 +90,8 @@ void RectSet(SDL_Rect * r, int x, int y, int w, int h)
 }
 
 
-#pragma mark - App
 // App
+#pragma mark - App
 static const uint16_t DefaultWindowWidth = 640;
 static const uint16_t DefaultWindowHeight = 480;
 static SDL_Window * Window = 0;
@@ -104,13 +104,13 @@ static uint8_t AppRunning = 1;
 static uint32_t NextGameTickAt = 0;
 
 
-#pragma mark - HUD
 // HUD
+#pragma mark - HUD
 static const uint16_t HUDHeight = 32;
 
 
-#pragma mark - Balls
 // Balls
+#pragma mark - Balls
 static const float BallRadius = 10.f;
 static const float BallChopVelocityY = 2.0f;
 enum BallType : uint8_t {
@@ -161,8 +161,8 @@ struct Ball {
 static uint8_t BallCount = 0;
 
 
-#pragma mark - Paddles
 // Paddles
+#pragma mark - Paddles
 static const float PaddleVStep = 0.1f;
 static const int16_t PaddleMaxH = 150;
 static const uint16_t PaddleWidth = 16;
@@ -196,8 +196,8 @@ struct Paddle {
 } Paddles[2];
 
 
-#pragma mark - Lasers
 // Lasers
+#pragma mark - Lasers
 static const float LaserMagnitudeStep = -0.2f;
 static const float LaserInitialMagnitude = 8.f;
 struct Laser {
