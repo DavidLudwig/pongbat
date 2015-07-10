@@ -44,10 +44,23 @@ static ImageID ImageNext = 1;
 static ImageID ImageIDBallBlue;
 static ImageID ImageIDBallNoPlayer;
 static ImageID ImageIDBallRed;
+static ImageID ImageIDPaddleBlue;
+static ImageID ImageIDPaddleRed;
 
-ImageID LoadImage(const char * filename)
+ImageID ImageIDAlloc()
 {
+    if (ImageNext < SDL_arraysize(Images)) {
+        return ImageNext++;
+    } else {
+        return 0;
+    }
+}
+
+ImageID ImageLoad(const char * filename)
+{
+    ImageID id;
     int w, h, n;
+    SDL_Surface * surface = NULL;
     void * data = stbi_load(filename, &w, &h, &n, 4);
     if ( ! data) {
         SDL_Log("%s, stbi_load failed for %s, \"%s\"",
@@ -61,16 +74,48 @@ ImageID LoadImage(const char * filename)
         SDL_Log("%s, Out of ImageIDs!", __FUNCTION__);
         return 0;
     }
-
-    Images[ImageNext] = SDL_CreateRGBSurfaceFrom(data, w, h, 32, w * 4, ImageRMask, ImageGMask, ImageBMask, ImageAMask);
-    if ( ! Images[ImageNext]) {
+    
+    surface = SDL_CreateRGBSurfaceFrom(data, w, h, 32, w * 4, ImageRMask, ImageGMask, ImageBMask, ImageAMask);
+    if ( ! surface) {
         SDL_Log("%s, SDL_CreateRGBSurfaceFrom failed: %s",
+                __FUNCTION__,
+                SDL_GetError());
+        stbi_image_free(data);
+        return 0;
+    }
+    
+    id = ImageIDAlloc();
+    if ( ! id) {
+        SDL_Log("%s, ImageIDAlloc() failed", __FUNCTION__);
+        SDL_FreeSurface(surface);
+        stbi_image_free(data);
+        return 0;
+    }
+    
+    Images[id] = surface;
+    return id;
+}
+
+ImageID ImageCreate(int w, int h)
+{
+    ImageID id;
+    SDL_Surface * surface = SDL_CreateRGBSurface(0, w, h, 32, ImageRMask, ImageGMask, ImageBMask, ImageAMask);
+    if ( ! surface) {
+        SDL_Log("%s, SDL_CreateRGBSurface failed: %s",
                 __FUNCTION__,
                 SDL_GetError());
         return 0;
     }
     
-    return ImageNext++;
+    id = ImageIDAlloc();
+    if ( ! id) {
+        SDL_Log("%s, ImageIDAlloc() failed", __FUNCTION__);
+        SDL_FreeSurface(surface);
+        return 0;
+    }
+    
+    Images[id] = surface;
+    return id;
 }
 
 
@@ -193,36 +238,45 @@ struct Paddle {
     float Bottom() const {
         return y + PaddleMaxH;
     }
+    
+    void GetRect(SDL_Rect * r) const {
+        r->x = x;
+        r->y = MathRound(y);
+        r->w = PaddleWidth;
+        r->h = PaddleMaxH;
+    }
 } Paddles[2];
 
 
 // Lasers
 #pragma mark - Lasers
-static const float LaserMagnitudeStep = -0.2f;
+static const float LaserMagnitudeStep = -0.4f;
 static const float LaserInitialMagnitude = 8.f;
+static const uint8_t LaserCutInterval = 3;
 struct Laser {
     float cy;
-    float magnitude;  // laser height = magnitude * 2.f
+    float magnitude;            // laser height = magnitude * 2.f
+    uint8_t gameTicksUntilCut;  // default is set via 'LaserCutInterval'
+    
+    uint8_t GetRect(SDL_Rect * r, int paddleIndex) const {
+        if (magnitude == 0.f) {
+            return -1;
+        }
+        switch (paddleIndex) {
+            case 0:  r->x = Paddles[0].Right();  r->w = ScreenWidth - Paddles[paddleIndex].Right();  break;
+            case 1:  r->x = 0;                   r->w = Paddles[paddleIndex].Left();                 break;
+            default:
+                return -1;
+        }
+        r->y = MathRound(cy - magnitude);
+        r->h = MathRound(magnitude * 2.f);
+        return 0;
+    }
 } Lasers[2];
 
 
 
 #pragma mark - Misc Game + App Code
-
-static void PaddleDraw(uint16_t x, int16_t y, Uint8 r, Uint8 g, Uint8 b)
-{
-    int16_t yoff_max = SDL_min(PaddleMaxH, ScreenHeight - HUDHeight - y);   // Make sure drawing doesn't occur below ScreenHeight (DavidL: is this needed?)
-    for (int16_t yoff = 0; yoff < yoff_max; ++yoff) {
-        for (int16_t xoff = 0; xoff < PaddleWidth; ++xoff) {
-            int32_t pixoff = (((y + yoff) * Screen->pitch) + ((x + xoff) << 2));
-            SDL_assert_paranoid(pixoff >= 0);
-            SDL_assert_paranoid(pixoff < ((ScreenHeight - HUDHeight) * Screen->pitch));
-            ((uint8_t *)(Screen->pixels))[pixoff + 0] = r;
-            ((uint8_t *)(Screen->pixels))[pixoff + 1] = g;
-            ((uint8_t *)(Screen->pixels))[pixoff + 2] = b;
-        }
-    }
-}
 
 static void GameInit()
 {
@@ -239,6 +293,10 @@ static void GameInit()
     Paddles[1].x = ScreenWidth - 32;
     Paddles[1].ballBounceDirection = -1;
     Paddles[1].ballType = BallTypeRed;
+
+    // Paddle contents
+    SDL_FillRect(Images[ImageIDPaddleBlue], NULL, SDL_MapRGB(Images[ImageIDPaddleBlue]->format, 0x00, 0x00, 0xff));
+    SDL_FillRect(Images[ImageIDPaddleRed],  NULL, SDL_MapRGB(Images[ImageIDPaddleRed]->format,  0xff, 0x00, 0x00));
     
     // Paddle input keys
     // TODO: set to SDL_SCANCODE_UNKNOWN for AI control?
@@ -321,7 +379,43 @@ static void GameUpdate()
             if (keyState[Paddles[i].keyLaser]) {
                 Lasers[i].magnitude = LaserInitialMagnitude;
                 Lasers[i].cy = ((Paddles[i].Bottom() - Paddles[i].Top()) / 2.f) + Paddles[i].Top();
+                Lasers[i].gameTicksUntilCut = 0;
             }
+        }
+    }
+    
+    // Laser-cuts
+    for (uint8_t i = 0; i < SDL_arraysize(Lasers); ++i) {
+        if (Lasers[i].gameTicksUntilCut > 0) {
+            Lasers[i].gameTicksUntilCut--;
+        }
+        
+        if (Lasers[i].gameTicksUntilCut == 0) {
+            SDL_Rect laserRect;
+            if (Lasers[i].GetRect(&laserRect, i) == 0) {
+                for (uint8_t j; j < SDL_arraysize(Paddles); ++j) {
+                    if (i != j) {
+                        SDL_Rect paddleRect, intersection;
+                        Paddles[j].GetRect(&paddleRect);
+                        if (SDL_IntersectRect(&laserRect, &paddleRect, &intersection)) {
+                            intersection.x -= paddleRect.x;
+                            intersection.y -= paddleRect.y;
+                            ImageID paddleImageID;
+                            switch (j) {
+                                case 0:  paddleImageID = ImageIDPaddleBlue; break;
+                                case 1:  paddleImageID = ImageIDPaddleRed;  break;
+                                default: paddleImageID = 0;                 break;
+                            }
+                            if (paddleImageID) {
+//                                SDL_FillRect(Images[paddleImageID], &intersection, SDL_MapRGBA(Images[paddleImageID]->format, 0x00, 0x00, 0x00, 0xff));
+                                SDL_FillRect(Images[paddleImageID], &intersection, SDL_MapRGBA(Images[paddleImageID]->format, 0x00, 0x00, 0x00, 0x00));
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Lasers[i].gameTicksUntilCut = LaserCutInterval;
         }
     }
     
@@ -392,22 +486,16 @@ static void GameDraw()
     SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0x55, 0x55, 0x55));
     
     // Paddles
-    PaddleDraw(Paddles[0].x, (int16_t)Paddles[0].y, 0xff, 0x00, 0x00);
-    PaddleDraw(Paddles[1].x, (int16_t)Paddles[1].y, 0x00, 0x00, 0xff);
-    
+    RectSet(&r, Paddles[0].x, Paddles[0].y, PaddleWidth, PaddleMaxH);
+    SDL_BlitSurface(Images[ImageIDPaddleBlue], NULL, Screen, &r);
+    RectSet(&r, Paddles[1].x, Paddles[1].y, PaddleWidth, PaddleMaxH);
+    SDL_BlitSurface(Images[ImageIDPaddleRed],  NULL, Screen, &r);
+
     // Lasers
     for (uint8_t i = 0; i < SDL_arraysize(Lasers); ++i) {
-        if (Lasers[i].magnitude == 0.f) {
-            continue;
+        if (Lasers[i].GetRect(&r, i) == 0) {
+            SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xff, 0xff, 0x00));
         }
-        switch (i) {
-            case 0:  r.x = Paddles[0].Right();  r.w = ScreenWidth - Paddles[0].Right();  break;
-            case 1:  r.x = 0;                   r.w = Paddles[1].Left();                 break;
-            default: SDL_assert_always(false);                                           break;
-        }
-        r.y = MathRound(Lasers[i].cy - Lasers[i].magnitude);
-        r.h = MathRound(Lasers[i].magnitude * 2.f);
-        SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xff, 0xff, 0x00));
     }
     
     // Balls
@@ -542,9 +630,11 @@ int main(int argc, char * argv[])
     chdir(SDL_GetBasePath());
 #endif
     
-    if ( ! ((ImageIDBallBlue = LoadImage("Data/Images/BallBlue.png")) &&
-            (ImageIDBallNoPlayer = LoadImage("Data/Images/BallNoPlayer.png")) &&
-            (ImageIDBallRed = LoadImage("Data/Images/BallRed.png"))
+    if ( ! ((ImageIDBallBlue = ImageLoad("Data/Images/BallBlue.png")) &&
+            (ImageIDBallNoPlayer = ImageLoad("Data/Images/BallNoPlayer.png")) &&
+            (ImageIDBallRed = ImageLoad("Data/Images/BallRed.png")) &&
+            (ImageIDPaddleBlue = ImageCreate(PaddleWidth, PaddleMaxH)) &&
+            (ImageIDPaddleRed = ImageCreate(PaddleWidth, PaddleMaxH))
             ))
     {
         return 1;
