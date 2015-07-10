@@ -412,12 +412,8 @@ static void GameDraw()
     
     // Balls
     for (uint8_t i = 0; i < BallCount; ++i) {
-        SDL_Rect ballRect = {
-            MathRound(Balls[i].Left()),
-            MathRound(Balls[i].Top()),
-            MathRound(BallRadius * 2),
-            MathRound(BallRadius * 2)
-        };
+        RectSet(&r, MathRound(Balls[i].Left()), MathRound(Balls[i].Top()),
+                    MathRound(BallRadius * 2),  MathRound(BallRadius * 2));
         
         ImageID ballImageID;
         switch (Balls[i].type) {
@@ -426,10 +422,10 @@ static void GameDraw()
             case BallTypeRed:       ballImageID = ImageIDBallRed;       break;
             default:                ballImageID = 0;
         }
-        if ( ! ballImageID) {
-            SDL_FillRect(Screen, &ballRect, SDL_MapRGB(Screen->format, 0, 0, 0));
+        if (ballImageID) {
+            SDL_BlitSurface(Images[ballImageID], NULL, Screen, &r);
         } else {
-            SDL_BlitSurface(Images[ballImageID], NULL, Screen, &ballRect);
+            SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0, 0, 0));
         }
     }
 }
