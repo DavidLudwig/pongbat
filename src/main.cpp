@@ -365,12 +365,16 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
         for (uint16_t y = intersection.y; y < (intersection.y + intersection.h); ++y) {
             const uint16_t bx = x - ballRect.x;
             const uint16_t by = y - ballRect.y;
+            const uint32_t balphachannel = (((uint32_t *)  ballImage->pixels)[bx + (by *   ballImage->w)] & ImageAMask);
+
             const uint16_t px = x - paddleRect.x;
             const uint16_t py = y - paddleRect.y;
-            const uint32_t balphachannel = (((uint32_t *)  ballImage->pixels)[bx + (by *   ballImage->w)] & ImageAMask);
             const uint32_t palphachannel = (((uint32_t *)paddleImage->pixels)[px + (py * paddleImage->w)] & ImageAMask);
-            if (balphachannel &&
-                ((palphachannel >> ImageAShift) == 0xff))
+            
+            if (balphachannel &&                            // A simple 'is non-zero' check will work fine for ball-alpha.
+                ((palphachannel >> ImageAShift) == 0xff))   // A fancier, 'is not fully-opaque' check is used for paddles,
+                                                            // as cut paddle parts may be translucent, when debugging
+                                                            // paddle slicing.
             {
                 return SDL_TRUE;
             }
