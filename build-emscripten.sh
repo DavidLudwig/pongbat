@@ -7,7 +7,7 @@ die() {
 }
 
 # Setup common vars
-PROJECT_DIR=$( cd -P "$( dirname "$0" )/.." && pwd )
+PROJECT_DIR=$( cd -P "$( dirname "$0" )" && pwd )
 BUILD_DIR="$PROJECT_DIR/build/emscripten"
 
 echo "BUILD_DIR: $BUILD_DIR"
