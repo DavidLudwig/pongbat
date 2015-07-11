@@ -31,11 +31,13 @@ static const uint32_t ImageRMask = 0xff000000;
 static const uint32_t ImageGMask = 0x00ff0000;
 static const uint32_t ImageBMask = 0x0000ff00;
 static const uint32_t ImageAMask = 0x000000ff;
+static const uint8_t  ImageAShift = 0;          // Number of bits to right-shift (from uint32_t) to get alpha-channel
 #else
 static const uint32_t ImageRMask = 0x000000ff;
 static const uint32_t ImageGMask = 0x0000ff00;
 static const uint32_t ImageBMask = 0x00ff0000;
 static const uint32_t ImageAMask = 0xff000000;
+static const uint8_t  ImageAShift = 24;         // Number of bits to right-shift (from uint32_t) to get alpha-channel
 #endif
 
 typedef uint8_t ImageID;
@@ -202,6 +204,21 @@ struct Ball {
         }
     }
     
+    void GetRect(SDL_Rect * r) const {
+        r->x = MathRound(Left());
+        r->y = MathRound(Top());
+        r->w = MathRound(BallRadius * 2.f);
+        r->h = MathRound(BallRadius * 2.f);
+    }
+    
+    SDL_Surface * GetImage() const {
+        switch (type) {
+            case BallTypeBlue:      return Images[ImageIDBallBlue];
+            case BallTypeNoPlayer:  return Images[ImageIDBallNoPlayer];
+            case BallTypeRed:       return Images[ImageIDBallRed];
+            default:                return NULL;
+        }
+    }
 } Balls[32];
 static uint8_t BallCount = 0;
 
@@ -244,6 +261,14 @@ struct Paddle {
         r->y = MathRound(y);
         r->w = PaddleWidth;
         r->h = PaddleMaxH;
+    }
+    
+    static SDL_Surface * GetImage(uint8_t paddleIndex) {
+        switch (paddleIndex) {
+            case 0:  return Images[ImageIDPaddleBlue];
+            case 1:  return Images[ImageIDPaddleRed];
+            default: return NULL;
+        }
     }
 } Paddles[2];
 
@@ -319,6 +344,40 @@ static void GameInit()
     Balls[0].vy = -0.7f;
     Balls[0].type = BallTypeNoPlayer;
     BallCount = 1;
+}
+
+static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex)
+{
+    // First, check to see if the ball + paddle's rects match up
+    SDL_Rect ballRect, paddleRect, intersection;
+    Balls[ballIndex].GetRect(&ballRect);
+    Paddles[paddleIndex].GetRect(&paddleRect);
+    if ( ! SDL_IntersectRect(&ballRect, &paddleRect, &intersection)) {
+        // The ball + paddle definitely don't collide!
+        return SDL_FALSE;
+    }
+    
+    //return SDL_TRUE;
+    
+    SDL_Surface * ballImage = Balls[ballIndex].GetImage();
+    SDL_Surface * paddleImage = Paddle::GetImage(paddleIndex);
+    for (uint16_t x = intersection.x; x < (intersection.x + intersection.w); ++x) {
+        for (uint16_t y = intersection.y; y < (intersection.y + intersection.h); ++y) {
+            const uint16_t bx = x - ballRect.x;
+            const uint16_t by = y - ballRect.y;
+            const uint16_t px = x - paddleRect.x;
+            const uint16_t py = y - paddleRect.y;
+            const uint32_t balphachannel = (((uint32_t *)  ballImage->pixels)[bx + (by *   ballImage->w)] & ImageAMask);
+            const uint32_t palphachannel = (((uint32_t *)paddleImage->pixels)[px + (py * paddleImage->w)] & ImageAMask);
+            if (balphachannel &&
+                ((palphachannel >> ImageAShift) == 0xff))
+            {
+                return SDL_TRUE;
+            }
+        }
+    }
+    
+    return SDL_FALSE;
 }
 
 static void GameUpdate()
@@ -407,7 +466,7 @@ static void GameUpdate()
                                 default: paddleImageID = 0;                 break;
                             }
                             if (paddleImageID) {
-//                                SDL_FillRect(Images[paddleImageID], &intersection, SDL_MapRGBA(Images[paddleImageID]->format, 0x00, 0x00, 0x00, 0xff));
+//                                SDL_FillRect(Images[paddleImageID], &intersection, SDL_MapRGBA(Images[paddleImageID]->format, 0x00, 0x00, 0x00, 0x12));
                                 SDL_FillRect(Images[paddleImageID], &intersection, SDL_MapRGBA(Images[paddleImageID]->format, 0x00, 0x00, 0x00, 0x00));
                             }
                         }
@@ -451,11 +510,7 @@ static void GameUpdate()
             // For now, do collisions with the entire paddle, and not a cut-up
             // one.  Eventually, paddles will be slice-able, probably with bits
             // representing valid slices.
-            if ((Balls[i].Left() < Paddles[j].Right()) &&
-                (Balls[i].Right() > Paddles[j].Left()) &&
-                (Balls[i].Top() < Paddles[j].Bottom()) &&
-                (Balls[i].Bottom() > Paddles[j].Top()))
-            {
+            if (GameIsBallPaddleCollision(i, j)) {
                 // Make sure that successive collisions with the same ball +
                 // paddle, do not result in multiple bounces!
                 //
@@ -486,10 +541,10 @@ static void GameDraw()
     SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0x55, 0x55, 0x55));
     
     // Paddles
-    RectSet(&r, Paddles[0].x, Paddles[0].y, PaddleWidth, PaddleMaxH);
-    SDL_BlitSurface(Images[ImageIDPaddleBlue], NULL, Screen, &r);
-    RectSet(&r, Paddles[1].x, Paddles[1].y, PaddleWidth, PaddleMaxH);
-    SDL_BlitSurface(Images[ImageIDPaddleRed],  NULL, Screen, &r);
+    for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
+        Paddles[i].GetRect(&r);
+        SDL_BlitSurface(Paddle::GetImage(i), NULL, Screen, &r);
+    }
 
     // Lasers
     for (uint8_t i = 0; i < SDL_arraysize(Lasers); ++i) {
@@ -500,18 +555,11 @@ static void GameDraw()
     
     // Balls
     for (uint8_t i = 0; i < BallCount; ++i) {
-        RectSet(&r, MathRound(Balls[i].Left()), MathRound(Balls[i].Top()),
-                    MathRound(BallRadius * 2),  MathRound(BallRadius * 2));
+        Balls[i].GetRect(&r);
         
-        ImageID ballImageID;
-        switch (Balls[i].type) {
-            case BallTypeBlue:      ballImageID = ImageIDBallBlue;      break;
-            case BallTypeNoPlayer:  ballImageID = ImageIDBallNoPlayer;  break;
-            case BallTypeRed:       ballImageID = ImageIDBallRed;       break;
-            default:                ballImageID = 0;
-        }
-        if (ballImageID) {
-            SDL_BlitSurface(Images[ballImageID], NULL, Screen, &r);
+        SDL_Surface * ballImage = Balls[i].GetImage();
+        if (ballImage) {
+            SDL_BlitSurface(ballImage, NULL, Screen, &r);
         } else {
             SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0, 0, 0));
         }
