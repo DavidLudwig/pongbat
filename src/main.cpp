@@ -20,6 +20,12 @@
 #endif
 
 
+// Debug Options
+#pragma mark - Debug Options
+//#define DEBUG_PADDLE_DRAWING 1                  // Uncomment to draw unseen paddle parts
+//#define DEBUG_KEYS 1                            // Uncomment to enable debug keys (via keyboard)
+
+
 // Images
 #pragma mark - Images
 #define STB_IMAGE_IMPLEMENTATION
@@ -230,7 +236,6 @@ static uint8_t BallCount = 0;
 
 // Paddles
 #pragma mark - Paddles
-//#define PADDLE_DEBUG_DRAWING 1                  // Uncomment to draw unseen paddle parts
 static const float PaddleVStep = 0.1f;
 static const int16_t PaddleMaxH = 150;
 static const uint16_t PaddleWidth = 16;
@@ -298,7 +303,7 @@ struct Paddle {
 // Lasers
 #pragma mark - Lasers
 static const float LaserMagnitudeStep = -0.4f;
-static const float LaserInitialMagnitude = 8.f;
+static const float LaserInitialMagnitude = 20.f; //8.f;
 static const uint8_t LaserCutInterval = 3;
 struct Laser {
     float cy;
@@ -489,7 +494,7 @@ static void GameUpdate()
                             intersection.y -= paddleRect.y;
                             SDL_Surface * paddleImage = Paddle::GetImage(j);
                             if (paddleImage) {
-#if PADDLE_DEBUG_DRAWING
+#if DEBUG_PADDLE_DRAWING
                                 SDL_FillRect(paddleImage, &intersection, SDL_MapRGBA(paddleImage->format, 0x00, 0x00, 0x00, 0x34));
 #else
                                 SDL_FillRect(paddleImage, &intersection, SDL_MapRGBA(paddleImage->format, 0x00, 0x00, 0x00, 0x00));
@@ -561,6 +566,21 @@ static void GameUpdate()
     }
 }
 
+static void GameEventHandler(const SDL_Event * event)
+{
+#if DEBUG_KEYS
+    switch (event->type) {
+        case SDL_KEYDOWN: {
+            switch (event->key.keysym.sym) {
+                case SDLK_r: {
+                    GameInit();
+                } break;
+            }
+        } break;
+    }
+#endif
+}
+
 static void GameDraw()
 {
     SDL_Rect r;
@@ -575,7 +595,7 @@ static void GameDraw()
     
     // Paddles
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
-#if PADDLE_DEBUG_DRAWING
+#if DEBUG_PADDLE_DRAWING
         // Highlight the paddle's vertical bounds (used when firing lasers, and
         // eventually for determining paddle-to-wall collisions).
         r.x = Paddles[i].Left() - 4;
@@ -651,6 +671,8 @@ static void AppUpdate()
                 }
             } break;
         }
+        
+        GameEventHandler(&event);
     }
 
     //
