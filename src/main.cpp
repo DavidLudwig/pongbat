@@ -60,6 +60,11 @@ ImageID ImageIDAlloc()
 
 ImageID ImageLoad(const char * filename)
 {
+    if (ImageNext > (SDL_arraysize(Images) - 1)) {
+        SDL_Log("%s, Out of ImageIDs!", __FUNCTION__);
+        return 0;
+    }
+    
     ImageID id;
     int w, h, n;
     SDL_Surface * surface = NULL;
@@ -69,11 +74,6 @@ ImageID ImageLoad(const char * filename)
                 __FUNCTION__,
                 (filename ? filename : NULL),
                 stbi_failure_reason());
-        return 0;
-    }
-    
-    if (ImageNext > (SDL_arraysize(Images) - 1)) {
-        SDL_Log("%s, Out of ImageIDs!", __FUNCTION__);
         return 0;
     }
     
