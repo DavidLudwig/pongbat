@@ -120,6 +120,11 @@ ImageID ImageCreate(int w, int h)
     return id;
 }
 
+static uint32_t ImageGetAlphaUnshifted(SDL_Surface * image, uint16_t x, uint16_t y)
+{
+    return ((uint32_t *)image->pixels)[x + (y * image->w)] & ImageAMask;
+}
+
 
 // Math
 #pragma mark - Math
@@ -235,6 +240,8 @@ struct Paddle {
     uint16_t x : 14;
     signed ballBounceDirection : 2;
     BallType ballType;
+    int16_t cutTop;     // offset from y, to paddle's actual top, after cut(s)
+    int16_t cutBottom;  // offset from y, to paddle's actual bottom, after cut(s)
     
     SDL_Scancode keyUp;
     SDL_Scancode keyDown;
@@ -270,7 +277,21 @@ struct Paddle {
             default: return NULL;
         }
     }
+    
+    static int16_t CalcEdge(SDL_Surface * paddleImage, int16_t ystart, int16_t yend, int16_t ystep) {
+        int16_t y;
+        for (y = ystart; y != (yend + ystep); y += ystep) {
+            for (int16_t x = 0; x < PaddleWidth; ++x) {
+                uint32_t a = ImageGetAlphaUnshifted(paddleImage, x, y);
+                if ((a >> ImageAShift) == 0xff) {
+                    return y;
+                }
+            }
+        }
+        return y;
+    }
 } Paddles[2];
+
 
 
 // Lasers
@@ -309,6 +330,8 @@ static void GameInit()
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
         Paddles[i].y = (ScreenHeight - HUDHeight - PaddleMaxH) / 2.f;
         Paddles[i].vy = 0.f;
+        Paddles[i].cutTop = 0;
+        Paddles[i].cutBottom = PaddleMaxH;
     }
     
     Paddles[0].x = 16;
@@ -365,11 +388,11 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
         for (uint16_t y = intersection.y; y < (intersection.y + intersection.h); ++y) {
             const uint16_t bx = x - ballRect.x;
             const uint16_t by = y - ballRect.y;
-            const uint32_t balphachannel = (((uint32_t *)  ballImage->pixels)[bx + (by *   ballImage->w)] & ImageAMask);
+            const uint32_t balphachannel = ImageGetAlphaUnshifted(ballImage, bx, by);
 
             const uint16_t px = x - paddleRect.x;
             const uint16_t py = y - paddleRect.y;
-            const uint32_t palphachannel = (((uint32_t *)paddleImage->pixels)[px + (py * paddleImage->w)] & ImageAMask);
+            const uint32_t palphachannel = ImageGetAlphaUnshifted(paddleImage, px, py);
             
             if (balphachannel &&                            // A simple 'is non-zero' check will work fine for ball-alpha.
                 ((palphachannel >> ImageAShift) == 0xff))   // A fancier, 'is not fully-opaque' check is used for paddles,
@@ -441,7 +464,7 @@ static void GameUpdate()
         if (Lasers[i].magnitude == 0.f) {
             if (keyState[Paddles[i].keyLaser]) {
                 Lasers[i].magnitude = LaserInitialMagnitude;
-                Lasers[i].cy = ((Paddles[i].Bottom() - Paddles[i].Top()) / 2.f) + Paddles[i].Top();
+                Lasers[i].cy = ((float)(Paddles[i].cutBottom - Paddles[i].cutTop) / 2.f) + (float)Paddles[i].cutTop + Paddles[i].Top();
                 Lasers[i].gameTicksUntilCut = 0;
             }
         }
@@ -463,15 +486,17 @@ static void GameUpdate()
                         if (SDL_IntersectRect(&laserRect, &paddleRect, &intersection)) {
                             intersection.x -= paddleRect.x;
                             intersection.y -= paddleRect.y;
-                            ImageID paddleImageID;
-                            switch (j) {
-                                case 0:  paddleImageID = ImageIDPaddleBlue; break;
-                                case 1:  paddleImageID = ImageIDPaddleRed;  break;
-                                default: paddleImageID = 0;                 break;
+                            SDL_Surface * paddleImage = Paddle::GetImage(j);
+                            if (paddleImage) {
+//                                SDL_FillRect(paddleImage, &intersection, SDL_MapRGBA(paddleImage->format, 0x00, 0x00, 0x00, 0x34));
+                                SDL_FillRect(paddleImage, &intersection, SDL_MapRGBA(paddleImage->format, 0x00, 0x00, 0x00, 0x00));
                             }
-                            if (paddleImageID) {
-//                                SDL_FillRect(Images[paddleImageID], &intersection, SDL_MapRGBA(Images[paddleImageID]->format, 0x00, 0x00, 0x00, 0x12));
-                                SDL_FillRect(Images[paddleImageID], &intersection, SDL_MapRGBA(Images[paddleImageID]->format, 0x00, 0x00, 0x00, 0x00));
+                            
+                            if ((intersection.y <= Paddles[j].cutTop) && ((intersection.y + intersection.h) >= Paddles[j].cutTop)) {
+                                Paddles[j].cutTop = Paddle::CalcEdge(paddleImage, intersection.y + intersection.h, PaddleMaxH - 1, 1);
+                            }
+                            if ((intersection.y <= Paddles[j].cutBottom) && ((intersection.y + intersection.h) >= Paddles[j].cutBottom)) {
+                                Paddles[j].cutBottom = 1 + Paddle::CalcEdge(paddleImage, intersection.y, 0, -1);
                             }
                         }
                     }
@@ -546,6 +571,16 @@ static void GameDraw()
     
     // Paddles
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
+#if 0
+        // Highlight the paddle's vertical bounds (used when firing lasers, and
+        // eventually for determining paddle-to-wall collisions).
+        r.x = Paddles[i].Left() - 4;
+        r.y = MathRound(Paddles[i].Top()) + Paddles[i].cutTop;
+        r.w = PaddleWidth + 8;
+        r.h = (Paddles[i].cutBottom - Paddles[i].cutTop);
+        SDL_FillRect(Screen, &r, SDL_MapRGBA(Screen->format, 0xff, 0xff, 0xff, 0x80));
+#endif
+        
         Paddles[i].GetRect(&r);
         SDL_BlitSurface(Paddle::GetImage(i), NULL, Screen, &r);
     }
