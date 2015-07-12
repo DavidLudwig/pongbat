@@ -230,6 +230,7 @@ static uint8_t BallCount = 0;
 
 // Paddles
 #pragma mark - Paddles
+//#define PADDLE_DEBUG_DRAWING 1                  // Uncomment to draw unseen paddle parts
 static const float PaddleVStep = 0.1f;
 static const int16_t PaddleMaxH = 150;
 static const uint16_t PaddleWidth = 16;
@@ -450,13 +451,13 @@ static void GameUpdate()
         
         // Move the paddle, making sure not to go past walls
         Paddles[i].y += Paddles[i].vy;
-        if (Paddles[i].Top() <= 0.f) {
+        if ((Paddles[i].y + (float)(Paddles[i].cutTop + 1)) <= 0.f) {
             // Stop at the top wall
-            Paddles[i].y = 0.f;
+            Paddles[i].y = (float)-(Paddles[i].cutTop + 1);
             Paddles[i].vy = 0.f;
-        } else if (Paddles[i].Bottom() >= (ScreenHeight - HUDHeight)) {
+        } else if ((Paddles[i].y + (float)(Paddles[i].cutBottom)) >= (float)(ScreenHeight - HUDHeight)) {
             // Stop at the bottom wall
-            Paddles[i].y = ScreenHeight - HUDHeight - PaddleMaxH;
+            Paddles[i].y = (float)(ScreenHeight - HUDHeight) - (float)(Paddles[i].cutBottom);
             Paddles[i].vy = 0.f;
         }
         
@@ -488,8 +489,11 @@ static void GameUpdate()
                             intersection.y -= paddleRect.y;
                             SDL_Surface * paddleImage = Paddle::GetImage(j);
                             if (paddleImage) {
-//                                SDL_FillRect(paddleImage, &intersection, SDL_MapRGBA(paddleImage->format, 0x00, 0x00, 0x00, 0x34));
+#if PADDLE_DEBUG_DRAWING
+                                SDL_FillRect(paddleImage, &intersection, SDL_MapRGBA(paddleImage->format, 0x00, 0x00, 0x00, 0x34));
+#else
                                 SDL_FillRect(paddleImage, &intersection, SDL_MapRGBA(paddleImage->format, 0x00, 0x00, 0x00, 0x00));
+#endif
                             }
                             
                             if ((intersection.y <= Paddles[j].cutTop) && ((intersection.y + intersection.h) >= Paddles[j].cutTop)) {
@@ -571,7 +575,7 @@ static void GameDraw()
     
     // Paddles
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
-#if 0
+#if PADDLE_DEBUG_DRAWING
         // Highlight the paddle's vertical bounds (used when firing lasers, and
         // eventually for determining paddle-to-wall collisions).
         r.x = Paddles[i].Left() - 4;
