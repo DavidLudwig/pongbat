@@ -384,8 +384,8 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
     
     SDL_Surface * ballImage = Balls[ballIndex].GetImage();
     SDL_Surface * paddleImage = Paddle::GetImage(paddleIndex);
-    for (uint16_t x = intersection.x; x < (intersection.x + intersection.w); ++x) {
-        for (uint16_t y = intersection.y; y < (intersection.y + intersection.h); ++y) {
+    for (uint16_t y = intersection.y; y < (intersection.y + intersection.h); ++y) {
+        for (uint16_t x = intersection.x; x < (intersection.x + intersection.w); ++x) {
             const uint16_t bx = x - ballRect.x;
             const uint16_t by = y - ballRect.y;
             const uint32_t balphachannel = ImageGetAlphaUnshifted(ballImage, bx, by);
