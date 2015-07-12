@@ -303,7 +303,7 @@ struct Paddle {
 // Lasers
 #pragma mark - Lasers
 static const float LaserMagnitudeStep = -0.4f;
-static const float LaserInitialMagnitude = 20.f; //8.f;
+static const float LaserInitialMagnitude = 8.f;
 static const uint8_t LaserCutInterval = 3;
 struct Laser {
     float cy;
