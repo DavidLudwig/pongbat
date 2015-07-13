@@ -446,6 +446,33 @@ static void GameInit()
 }
 
 
+//
+//     ####                              #####                        #
+//    #       ####  ## #    ###          #      #   #   ###   # ##   ####    ####
+//    #  ##  #   #  # # #  #####         ####    # #   #####  ##  #   #     ###
+//    #   #  #  ##  # # #  #             #       # #   #      #   #   #       ###
+//     ####   ## #  #   #   ###          #####    #     ###   #   #    ##   ####
+//
+#pragma mark - Game Events
+
+// GameEventHandler -- processes game-specific SDL_Events, *RARELY-USED*
+//   Most input is handled by inspecting current input state from inside GameUpdate().
+static void GameEventHandler(const SDL_Event * event)
+{
+#if DEBUG_KEYS
+    switch (event->type) {
+        case SDL_KEYDOWN: {
+            switch (event->key.keysym.sym) {
+                case SDLK_r: {
+                    GameInit();
+                } break;
+            }
+        } break;
+    }
+#endif
+}
+
+
 //   
 //     ####                               ###           ##     ##      #             #                        
 //    #       ####  ## #    ###          #   #   ###     #      #            ####          ###   # ##    #### 
@@ -453,6 +480,7 @@ static void GameInit()
 //    #   #  #  ##  # # #  #             #   #  #   #    #      #      #      ###    #    #   #  #   #    ### 
 //     ####   ## #  #   #   ###           ###    ###    ###    ###     #    ####     #     ###   #   #  ####  
 //                                                                                                            
+#pragma mark - Game Collisions
 
 // GameIsBallPaddleCollision -- determines if a paddle and a ball are colliding
 static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex)
@@ -498,38 +526,13 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
 
 
 //   
-//     ####                              #####                        #           
-//    #       ####  ## #    ###          #      #   #   ###   # ##   ####    #### 
-//    #  ##  #   #  # # #  #####         ####    # #   #####  ##  #   #     ###   
-//    #   #  #  ##  # # #  #             #       # #   #      #   #   #       ### 
-//     ####   ## #  #   #   ###          #####    #     ###   #   #    ##   ####  
-//                                                                                
-
-// GameEventHandler -- processes game-specific SDL_Events, *RARELY-USED*
-//   Most input is handled by inspecting current input state from inside GameUpdate().
-static void GameEventHandler(const SDL_Event * event)
-{
-#if DEBUG_KEYS
-    switch (event->type) {
-        case SDL_KEYDOWN: {
-            switch (event->key.keysym.sym) {
-                case SDLK_r: {
-                    GameInit();
-                } break;
-            }
-        } break;
-    }
-#endif
-}
-
-
-//   
 //     ####                              #   #             #          #           
 //    #       ####  ## #    ###          #   #  ####    ####   ####  ####    ###  
 //    #  ##  #   #  # # #  #####         #   #  #   #  #   #  #   #   #     ##### 
 //    #   #  #  ##  # # #  #             #   #  #   #  #   #  #  ##   #     #     
 //     ####   ## #  #   #   ###           ###   ####    ####   ## #    ##    ###  
 //                                              #                                 
+#pragma mark - Game Update
 
 // GameUpdate -- updates game-state; called 100 times per second
 static void GameUpdate()
@@ -573,7 +576,7 @@ static void GameUpdate()
             }
         }
         
-        // Move the paddle, making sure not to go past walls
+        // Move the paddle, stopping at walls
         Paddles[i].y += Paddles[i].vy;
         if ((Paddles[i].y + (float)(Paddles[i].cutTop + 1)) <= 0.f) {
             // Stop at the top wall
@@ -600,7 +603,6 @@ static void GameUpdate()
         if (Lasers[i].gameTicksUntilCut > 0) {
             Lasers[i].gameTicksUntilCut--;
         }
-        
         if (Lasers[i].gameTicksUntilCut == 0) {
             SDL_Rect laserRect;
             if (Lasers[i].GetRect(&laserRect, i) == 0) {
@@ -624,7 +626,7 @@ static void GameUpdate()
                                 Paddles[j].cutTop = Paddle::CalcEdge(paddleImage, intersection.y + intersection.h, PaddleMaxH - 1, 1);
                             }
                             if ((intersection.y <= Paddles[j].cutBottom) && ((intersection.y + intersection.h) >= Paddles[j].cutBottom)) {
-                                // TODO: explain, in comments, why '1' is added to CalcEdge result.  Yes, this is needed, probably.
+                                // TODO: explain, in comments, why '1' is added to CalcEdge result.  Yes, this is needed, maybe.
                                 Paddles[j].cutBottom = 1 + Paddle::CalcEdge(paddleImage, intersection.y, 0, -1);
                             }
                         }
@@ -694,6 +696,7 @@ static void GameUpdate()
 //    #   #  #  ##  # # #  #             #   #  #      #  ##  # # # 
 //     ####   ## #  #   #   ###          ####   #       ## #   # #  
 //                                                                  
+#pragma mark - Game Draw
 
 // GameDraw -- draws screen; SHOULD NOT ALTER GAME STATE (use GameUpdate() for that!!!)
 //   This may be called at a different interval than GameUpdate().
@@ -714,7 +717,7 @@ static void GameDraw()
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
 #if DEBUG_PADDLE_DRAWING
         // Highlight the paddle's vertical bounds (used when firing lasers, and
-        // eventually for determining paddle-to-wall collisions).
+        // for determining paddle-to-wall collisions).
         r.x = Paddles[i].Left() - 4;
         r.y = MathRound(Paddles[i].Top()) + Paddles[i].cutTop;
         r.w = PaddleWidth + 8;
@@ -759,18 +762,19 @@ static void GameDraw()
 //  - calling GameUpdate() at a fixed rate
 //  - calling GameDraw() at a variable, dynamic rate
 //  - loading images  (TODO: consider moving game-specific image loads into GamePreload(), or some other one-time function call)
-//  - setting up and managing rendering resources
-//  - pumping OS events (SDL handles this, for the most part)
+//  - setting up and managing low-level rendering resources, such as GPU textures
+//  - processing platform-specific events (SDL handles this, for the most part)
 //  - providing appropriate app entry point(s), and registering timing callback(s), if necessary (such as for Emscripten-use)
 //
+#pragma mark - App
 
-static const uint16_t DefaultWindowWidth = 640;     // Screen size can be anything.  App will scale the game's content and add black bars, as needed.
+static const uint16_t DefaultWindowWidth = 640;     // Window size can be anything.  App will scale the game's content and add black bars, as needed.
 static const uint16_t DefaultWindowHeight = 480;
 static SDL_Window * Window = 0;                     // platform-native window (or view, or canvas, or whatever)
 static SDL_Renderer * Renderer = 0;                 // platform-native renderer (use WebGL on Emscripten, OpenGL on OSX, D3D on Windows, etc.)
-static SDL_Texture * ScreenTexture = 0;             // 'Screen' surface gets copied here, once per draw
+static SDL_Texture * ScreenTexture = 0;             // 'Screen' surface gets copied here, once per draw ; used for window-scaling
 static uint8_t AppRunning = 1;                      // 1 for running, 0 for dead-app
-static uint32_t NextGameTickAt = 0;                 // When will the next game-tick occur, as measured in milliseconds, and compared against SDL_GetTicks() result(s)
+static uint32_t NextGameTickAt = 0;                 // When will the next game-tick occur, as measured in milliseconds, and compared against SDL_GetTicks()
 
 // AppTexturesReload -- reloads GPU textures, of which there are few, as almost all content is rendered in software, by the main CPU
 static uint8_t AppTexturesReload()
