@@ -50,9 +50,14 @@
 //                         ###                
 //
 #pragma mark - Images
+
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #include "stb_image.h"
+
+static SDL_Surface * Screen = 0;
+static const uint16_t ScreenWidth = 640;
+static const uint16_t ScreenHeight = 480;
 
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 static const uint32_t ImageRMask = 0xff000000;
@@ -174,26 +179,6 @@ void RectSet(SDL_Rect * r, int x, int y, int w, int h)
     r->w = w;
     r->h = h;
 }
-
-//   
-//      #                          ###                         #                    #           
-//     # #   ####   ####          #   #   ###   # ##    ####  ####    ####  # ##   ####    #### 
-//    #   #  #   #  #   #         #      #   #  ##  #  ###     #     #   #  ##  #   #     ###   
-//    #####  #   #  #   #         #   #  #   #  #   #    ###   #     #  ##  #   #   #       ### 
-//    #   #  ####   ####           ###    ###   #   #  ####     ##    ## #  #   #    ##   ####  
-//           #      #                                                                           
-//   
-#pragma mark - App
-static const uint16_t DefaultWindowWidth = 640;
-static const uint16_t DefaultWindowHeight = 480;
-static SDL_Window * Window = 0;
-static SDL_Renderer * Renderer = 0;
-static SDL_Surface * Screen = 0;
-static SDL_Texture * ScreenTexture = 0;
-static const uint16_t ScreenWidth = 640;
-static const uint16_t ScreenHeight = 480;
-static uint8_t AppRunning = 1;
-static uint32_t NextGameTickAt = 0;
 
 
 //   
@@ -734,6 +719,15 @@ static void GameDraw()
 //    #   #  ####   ####  
 //           #      #     
 //   
+
+static const uint16_t DefaultWindowWidth = 640;
+static const uint16_t DefaultWindowHeight = 480;
+static SDL_Window * Window = 0;
+static SDL_Renderer * Renderer = 0;
+static SDL_Texture * ScreenTexture = 0;
+static uint8_t AppRunning = 1;
+static uint32_t NextGameTickAt = 0;
+
 static uint8_t AppTexturesReload()
 {
     if (ScreenTexture) {
