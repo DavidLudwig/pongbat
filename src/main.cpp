@@ -24,7 +24,7 @@
 #endif
 
 #if __MACOSX__
-#include <unistd.h>     // for chdir(), ...
+#include <unistd.h>         // for chdir()
 #endif
 
 
@@ -51,37 +51,48 @@
 //
 #pragma mark - Images
 
+// stb_image is a single-file, C/C++ header-only, image loader
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #include "stb_image.h"
 
+// Global screen.  All game elements are drawn here.  In the future, menu items
+// will probably be drawn here, too.
 static SDL_Surface * Screen = 0;
 static const uint16_t ScreenWidth = 640;
 static const uint16_t ScreenHeight = 480;
 
+// Setup endian-specific constants.
+//
+// BUG: These likely fail on Emscripten, when running on a big-endian machine.
+//   Consider assigning them dynamically, in this case.
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 static const uint32_t ImageRMask = 0xff000000;
 static const uint32_t ImageGMask = 0x00ff0000;
 static const uint32_t ImageBMask = 0x0000ff00;
 static const uint32_t ImageAMask = 0x000000ff;
-static const uint8_t  ImageAShift = 0;          // Number of bits to right-shift (from uint32_t) to get alpha-channel
+static const uint8_t  ImageAShift = 0;          // Number of bits to right-shift to get alpha-channel
 #else
 static const uint32_t ImageRMask = 0x000000ff;
 static const uint32_t ImageGMask = 0x0000ff00;
 static const uint32_t ImageBMask = 0x00ff0000;
 static const uint32_t ImageAMask = 0xff000000;
-static const uint8_t  ImageAShift = 24;         // Number of bits to right-shift (from uint32_t) to get alpha-channel
+static const uint8_t  ImageAShift = 24;         // Number of bits to right-shift to get alpha-channel
 #endif
 
+// Images are accessed via ID numbers
 typedef uint8_t ImageID;
 static SDL_Surface * Images[64];
 static ImageID ImageNext = 1;
+
+// Game-specific Image IDs
 static ImageID ImageIDBallBlue;
 static ImageID ImageIDBallNoPlayer;
 static ImageID ImageIDBallRed;
 static ImageID ImageIDPaddleBlue;
 static ImageID ImageIDPaddleRed;
 
+// ImageIDAlloc -- allocate a new ImageID
 ImageID ImageIDAlloc()
 {
     if (ImageNext < SDL_arraysize(Images)) {
@@ -91,6 +102,7 @@ ImageID ImageIDAlloc()
     }
 }
 
+// ImageLoad -- load an image from disk, to a new ImageID
 ImageID ImageLoad(const char * filename)
 {
     if (ImageNext > (SDL_arraysize(Images) - 1)) {
@@ -131,6 +143,7 @@ ImageID ImageLoad(const char * filename)
     return id;
 }
 
+// ImageCreate -- create a new image, to a new ImageID
 ImageID ImageCreate(int w, int h)
 {
     ImageID id;
@@ -153,6 +166,7 @@ ImageID ImageCreate(int w, int h)
     return id;
 }
 
+// ImageGetAlphaUnshifted -- gets a pixel's alpha channel, without shifting it to the MSB
 static uint32_t ImageGetAlphaUnshifted(SDL_Surface * image, uint16_t x, uint16_t y)
 {
     return ((uint32_t *)image->pixels)[x + (y * image->w)] & ImageAMask;
@@ -167,11 +181,14 @@ static uint32_t ImageGetAlphaUnshifted(SDL_Surface * image, uint16_t x, uint16_t
 //    #   #   ## #    ##   #   # 
 //                               
 #pragma mark - Math
+
+// MathRound -- cross-platform float-to-int rounding
 int MathRound(float x)
 {
     return (x + 0.5f);
 }
 
+// RectSet -- sets the contents of an SDL_Rect
 void RectSet(SDL_Rect * r, int x, int y, int w, int h)
 {
     r->x = x;
@@ -208,11 +225,11 @@ enum BallType : uint8_t {
     BallTypeRed
 };
 struct Ball {
-    float cx;   // Center X
-    float cy;   // Center Y
-    float vx;
-    float vy;
-    BallType type;
+    float cx;       // Center X
+    float cy;       // Center Y
+    float vx;       // Velocity, X
+    float vy;       // Velocity, Y
+    BallType type;  // Blue?  Red?  Other?
     
     float Left() const {
         return cx - BallRadius;
@@ -278,17 +295,17 @@ static const int16_t PaddleMaxH = 150;
 static const uint16_t PaddleWidth = 16;
 static const float PaddleToBallFriction = 1.f;
 struct Paddle {
-    float y;
-    float vy;
-    uint16_t x : 14;
-    signed ballBounceDirection : 2;
-    BallType ballType;
+    float y;            // Y (paddle-top)
+    float vy;           // Velocity, Y
+    uint16_t x : 14;    // X (paddle-left)
+    signed ballBounceDirection : 2;     // Which direction should colliding ball(s) be sent in (along the X axis)
+    BallType ballType;  // Convert colliding ball(s) to this BallType
     int16_t cutTop;     // offset from y, to paddle's actual top, after cut(s)
     int16_t cutBottom;  // offset from y, to paddle's actual bottom, after cut(s)
     
-    SDL_Scancode keyUp;
-    SDL_Scancode keyDown;
-    SDL_Scancode keyLaser;
+    SDL_Scancode keyUp;     // press this to move up
+    SDL_Scancode keyDown;   // press this to move down
+    SDL_Scancode keyLaser;  // press this to fire laser
     
     uint16_t Left() const {
         return x;
@@ -313,6 +330,7 @@ struct Paddle {
         r->h = PaddleMaxH;
     }
     
+    // GetImage -- convert paddleIndex (0 or 1) to appropriate SDL_Surface
     static SDL_Surface * GetImage(uint8_t paddleIndex) {
         switch (paddleIndex) {
             case 0:  return Images[ImageIDPaddleBlue];
@@ -321,6 +339,7 @@ struct Paddle {
         }
     }
     
+    // CalcEdge -- computes a new top, or bottom, for paddle; called as part of paddle-cutting algorithm
     static int16_t CalcEdge(SDL_Surface * paddleImage, int16_t ystart, int16_t yend, int16_t ystep) {
         int16_t y;
         for (y = ystart; y != (yend + ystep); y += ystep) {
@@ -344,14 +363,16 @@ struct Paddle {
 //    #####   ## #  ####    ###   #      ####  
 //                                             
 #pragma mark - Lasers
-static const float LaserMagnitudeStep = -0.4f;
-static const float LaserInitialMagnitude = 8.f;
-static const uint8_t LaserCutInterval = 3;
+static const float LaserMagnitudeStep = -0.4f;      // Adjust laser magnitude by this much, per game-tick
+static const float LaserInitialMagnitude = 8.f;     // Default laser magnitutde; TODO: make this adjustable, per-paddle (for laser-upgrades)
+static const uint8_t LaserCutInterval = 3;          // Only perform cuts once per this number of game-ticks
 struct Laser {
-    float cy;
+    float cy;                   // laser center, on Y axis
     float magnitude;            // laser height = magnitude * 2.f
     uint8_t gameTicksUntilCut;  // default is set via 'LaserCutInterval'
     
+    // GetRect -- try getting laser's SDL_Rect, in Screen coordinates
+    //   Returns 0 on success, non-zero on failure.  Result rect will be output to 'r'.
     uint8_t GetRect(SDL_Rect * r, int paddleIndex) const {
         if (magnitude == 0.f) {
             return -1;
@@ -376,8 +397,9 @@ struct Laser {
 //    #   #  #  ##  # # #  #               #    #   #    #     #    
 //     ####   ## #  #   #   ###           ###   #   #    #      ##  
 //                                                                  
-#pragma mark - Game
+#pragma mark - Game Init
 
+// GameInit -- [re]initializes a new round of gameplay
 static void GameInit()
 {
     // Paddle position
@@ -432,6 +454,7 @@ static void GameInit()
 //     ####   ## #  #   #   ###           ###    ###    ###    ###     #    ####     #     ###   #   #  ####  
 //                                                                                                            
 
+// GameIsBallPaddleCollision -- determines if a paddle and a ball are colliding
 static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex)
 {
     // First, check to see if the ball + paddle's rects match up
@@ -445,6 +468,7 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
     
     //return SDL_TRUE;
     
+    // Next, do a pixel-alpha check, both in the ball and in the paddle
     SDL_Surface * ballImage = Balls[ballIndex].GetImage();
     SDL_Surface * paddleImage = Paddle::GetImage(paddleIndex);
     for (uint16_t y = intersection.y; y < (intersection.y + intersection.h); ++y) {
@@ -457,16 +481,18 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
             const uint16_t py = y - paddleRect.y;
             const uint32_t palphachannel = ImageGetAlphaUnshifted(paddleImage, px, py);
             
+            // Make sure the ball and the paddle are opaque (at the current pixel)
             if (balphachannel &&                            // A simple 'is non-zero' check will work fine for ball-alpha.
                 ((palphachannel >> ImageAShift) == 0xff))   // A fancier, 'is not fully-opaque' check is used for paddles,
                                                             // as cut paddle parts may be translucent, when debugging
-                                                            // paddle slicing.
+                                                            // paddle-slicing.
             {
                 return SDL_TRUE;
             }
         }
     }
     
+    // Nope, no collision
     return SDL_FALSE;
 }
 
@@ -478,6 +504,9 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
 //    #   #  #  ##  # # #  #             #       # #   #      #   #   #       ### 
 //     ####   ## #  #   #   ###          #####    #     ###   #   #    ##   ####  
 //                                                                                
+
+// GameEventHandler -- processes game-specific SDL_Events, *RARELY-USED*
+//   Most input is handled by inspecting current input state.
 static void GameEventHandler(const SDL_Event * event)
 {
 #if DEBUG_KEYS
@@ -501,6 +530,8 @@ static void GameEventHandler(const SDL_Event * event)
 //    #   #  #  ##  # # #  #             #   #  #   #  #   #  #  ##   #     #     
 //     ####   ## #  #   #   ###           ###   ####    ####   ## #    ##    ###  
 //                                              #                                 
+
+// GameUpdate -- updates game-state; called 100 times per second
 static void GameUpdate()
 {
     // Get pressed-state for all keyboard keys
@@ -662,6 +693,10 @@ static void GameUpdate()
 //    #   #  #  ##  # # #  #             #   #  #      #  ##  # # # 
 //     ####   ## #  #   #   ###          ####   #       ## #   # #  
 //                                                                  
+
+// GameDraw -- draws screen; SHOULD NOT ALTER GAME STATE (use GameUpdate() for that!!!)
+//   This may be called at a different interval than GameUpdate().
+//   It is NOT guaranteed to be called at a fixed rate!
 static void GameDraw()
 {
     SDL_Rect r;
@@ -719,6 +754,14 @@ static void GameDraw()
 //    #   #  ####   ####  
 //           #      #     
 //   
+// Handles lower-level window + renderer calls, including, but not limited to:
+//  - calling GameUpdate() at a fixed rate
+//  - calling GameDraw() at a variable, dynamic rate
+//  - loading images  (TODO: consider moving game-specific image loads into GamePreload(), or some other one-time function call)
+//  - setting up and managing rendering resources
+//  - pumping OS events (SDL handles this, for the most part)
+//  - providing appropriate app entry point(s), and registering timing callback(s), if necessary (such as for Emscripten-use)
+//
 
 static const uint16_t DefaultWindowWidth = 640;
 static const uint16_t DefaultWindowHeight = 480;
