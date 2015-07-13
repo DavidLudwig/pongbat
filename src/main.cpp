@@ -506,7 +506,7 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
 //                                                                                
 
 // GameEventHandler -- processes game-specific SDL_Events, *RARELY-USED*
-//   Most input is handled by inspecting current input state.
+//   Most input is handled by inspecting current input state from inside GameUpdate().
 static void GameEventHandler(const SDL_Event * event)
 {
 #if DEBUG_KEYS
@@ -624,6 +624,7 @@ static void GameUpdate()
                                 Paddles[j].cutTop = Paddle::CalcEdge(paddleImage, intersection.y + intersection.h, PaddleMaxH - 1, 1);
                             }
                             if ((intersection.y <= Paddles[j].cutBottom) && ((intersection.y + intersection.h) >= Paddles[j].cutBottom)) {
+                                // TODO: explain, in comments, why '1' is added to CalcEdge result.  Yes, this is needed, probably.
                                 Paddles[j].cutBottom = 1 + Paddle::CalcEdge(paddleImage, intersection.y, 0, -1);
                             }
                         }
@@ -763,14 +764,15 @@ static void GameDraw()
 //  - providing appropriate app entry point(s), and registering timing callback(s), if necessary (such as for Emscripten-use)
 //
 
-static const uint16_t DefaultWindowWidth = 640;
+static const uint16_t DefaultWindowWidth = 640;     // Screen size can be anything.  App will scale the game's content and add black bars, as needed.
 static const uint16_t DefaultWindowHeight = 480;
-static SDL_Window * Window = 0;
-static SDL_Renderer * Renderer = 0;
-static SDL_Texture * ScreenTexture = 0;
-static uint8_t AppRunning = 1;
-static uint32_t NextGameTickAt = 0;
+static SDL_Window * Window = 0;                     // platform-native window (or view, or canvas, or whatever)
+static SDL_Renderer * Renderer = 0;                 // platform-native renderer (use WebGL on Emscripten, OpenGL on OSX, D3D on Windows, etc.)
+static SDL_Texture * ScreenTexture = 0;             // 'Screen' surface gets copied here, once per draw
+static uint8_t AppRunning = 1;                      // 1 for running, 0 for dead-app
+static uint32_t NextGameTickAt = 0;                 // When will the next game-tick occur, as measured in milliseconds, and compared against SDL_GetTicks() result(s)
 
+// AppTexturesReload -- reloads GPU textures, of which there are few, as almost all content is rendered in software, by the main CPU
 static uint8_t AppTexturesReload()
 {
     if (ScreenTexture) {
@@ -789,6 +791,7 @@ static uint8_t AppTexturesReload()
     return 0;
 }
 
+// AppUpdate -- called frequently, typically many times per second, often at monitor's refresh rate
 static void AppUpdate()
 {
     // Make note of the app's current time
@@ -814,6 +817,7 @@ static void AppUpdate()
             } break;
         }
         
+        // Let the game handle event(s), as needed.
         GameEventHandler(&event);
     }
 
@@ -838,6 +842,7 @@ static void AppUpdate()
     SDL_RenderPresent(Renderer);
 }
 
+// AppInit -- performs one-time app initialization
 static uint8_t AppInit()
 {
     SDL_SetHint("SDL_HINT_RENDER_VSYNC", "1");
@@ -885,6 +890,7 @@ int main(int argc, char * argv[])
     chdir(SDL_GetBasePath());
 #endif
     
+    // Load/create, all images
     if ( ! ((ImageIDBallBlue = ImageLoad("Data/Images/BallBlue.png")) &&
             (ImageIDBallNoPlayer = ImageLoad("Data/Images/BallNoPlayer.png")) &&
             (ImageIDBallRed = ImageLoad("Data/Images/BallRed.png")) &&
@@ -899,6 +905,8 @@ int main(int argc, char * argv[])
     NextGameTickAt = 0;
 
     // Start a new round of gameplay
+    // TODO: Call GameInit() more frequently, to restart game.
+    // NOTE: 'R' debug key will invoke GameInit(), which will forcefully restart the game!
     GameInit();
 
     // Game loop
