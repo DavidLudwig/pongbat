@@ -117,7 +117,7 @@ ImageID ImageLoad(const char * filename)
     if ( ! data) {
         SDL_Log("%s, stbi_load failed for %s, \"%s\"",
                 __FUNCTION__,
-                (filename ? filename : NULL),
+                (filename ? filename : "(null)"),
                 stbi_failure_reason());
         return 0;
     }
