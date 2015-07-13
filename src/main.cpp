@@ -7,6 +7,14 @@
 //  for details.
 //
 
+
+//   
+//    #   #           #                  #   #                    #                      
+//    ## ##   ####         # ##          #   #   ###    ####   ####   ###   # ##    #### 
+//    # # #  #   #    #    ##  #         #####  #####  #   #  #   #  #####  ##     ###   
+//    # # #  #  ##    #    #   #         #   #  #      #  ##  #   #  #      #        ### 
+//    #   #   ## #    #    #   #         #   #   ###    ## #   ####   ###   #      ####  
+//   
 #pragma mark - Main Headers
 
 #include <SDL.h>
@@ -20,13 +28,27 @@
 #endif
 
 
-// Debug Options
+//   
+//    ####          #                            ###           #       #                        
+//    #   #   ###   ####   #   #   ####         #   #  ####   ####           ###   # ##    #### 
+//    #   #  #####  #   #  #   #  #   #         #   #  #   #   #       #    #   #  ##  #  ###   
+//    #   #  #      #   #  #  ##   ####         #   #  #   #   #       #    #   #  #   #    ### 
+//    ####    ###   ####    ## #      #          ###   ####     ##     #     ###   #   #  ####  
+//                                 ###                 #                                        
+//
 #pragma mark - Debug Options
 //#define DEBUG_PADDLE_DRAWING 1                  // Uncomment to draw unseen paddle parts
 //#define DEBUG_KEYS 1                            // Uncomment to enable debug keys (via keyboard)
 
 
-// Images
+//
+//    ###                                     
+//     #    ## #    ####   ####   ###    #### 
+//     #    # # #  #   #  #   #  #####  ###   
+//     #    # # #  #  ##   ####  #        ### 
+//    ###   #   #   ## #      #   ###   ####  
+//                         ###                
+//
 #pragma mark - Images
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
@@ -132,7 +154,13 @@ static uint32_t ImageGetAlphaUnshifted(SDL_Surface * image, uint16_t x, uint16_t
 }
 
 
-// Math
+//   
+//    #   #          #     #     
+//    ## ##   ####  ####   ####  
+//    # # #  #   #   #     #   # 
+//    # # #  #  ##   #     #   # 
+//    #   #   ## #    ##   #   # 
+//                               
 #pragma mark - Math
 int MathRound(float x)
 {
@@ -147,8 +175,14 @@ void RectSet(SDL_Rect * r, int x, int y, int w, int h)
     r->h = h;
 }
 
-
-// App
+//   
+//      #                          ###                         #                    #           
+//     # #   ####   ####          #   #   ###   # ##    ####  ####    ####  # ##   ####    #### 
+//    #   #  #   #  #   #         #      #   #  ##  #  ###     #     #   #  ##  #   #     ###   
+//    #####  #   #  #   #         #   #  #   #  #   #    ###   #     #  ##  #   #   #       ### 
+//    #   #  ####   ####           ###    ###   #   #  ####     ##    ## #  #   #    ##   ####  
+//           #      #                                                                           
+//   
 #pragma mark - App
 static const uint16_t DefaultWindowWidth = 640;
 static const uint16_t DefaultWindowHeight = 480;
@@ -162,12 +196,24 @@ static uint8_t AppRunning = 1;
 static uint32_t NextGameTickAt = 0;
 
 
-// HUD
+//   
+//    #   #  #   #  ####  
+//    #   #  #   #  #   # 
+//    #####  #   #  #   # 
+//    #   #  #   #  #   # 
+//    #   #   ###   ####  
+//                        
 #pragma mark - HUD
 static const uint16_t HUDHeight = 32;
 
 
-// Balls
+//   
+//    ####           ##     ##          
+//    #   #   ####    #      #     #### 
+//    ####   #   #    #      #    ###   
+//    #   #  #  ##    #      #      ### 
+//    ####    ## #   ###    ###   ####  
+//                                      
 #pragma mark - Balls
 static const float BallRadius = 10.f;
 static const float BallChopVelocityY = 2.0f;
@@ -234,7 +280,13 @@ struct Ball {
 static uint8_t BallCount = 0;
 
 
-// Paddles
+//   
+//    ####              #      #   ##                 
+//    #   #   ####   ####   ####    #     ###    #### 
+//    ####   #   #  #   #  #   #    #    #####  ###   
+//    #      #  ##  #   #  #   #    #    #        ### 
+//    #       ## #   ####   ####   ###    ###   ####  
+//                                                    
 #pragma mark - Paddles
 static const float PaddleVStep = 0.1f;
 static const int16_t PaddleMaxH = 150;
@@ -299,8 +351,13 @@ struct Paddle {
 } Paddles[2];
 
 
-
-// Lasers
+//   
+//    #                                        
+//    #       ####   ####   ###   # ##    #### 
+//    #      #   #  ###    #####  ##     ###   
+//    #      #  ##    ###  #      #        ### 
+//    #####   ## #  ####    ###   #      ####  
+//                                             
 #pragma mark - Lasers
 static const float LaserMagnitudeStep = -0.4f;
 static const float LaserInitialMagnitude = 8.f;
@@ -327,8 +384,14 @@ struct Laser {
 } Lasers[2];
 
 
-
-#pragma mark - Misc Game + App Code
+//   
+//     ####                               ###            #     #    
+//    #       ####  ## #    ###            #    # ##          ####  
+//    #  ##  #   #  # # #  #####           #    ##  #    #     #    
+//    #   #  #  ##  # # #  #               #    #   #    #     #    
+//     ####   ## #  #   #   ###           ###   #   #    #      ##  
+//                                                                  
+#pragma mark - Game
 
 static void GameInit()
 {
@@ -375,6 +438,15 @@ static void GameInit()
     BallCount = 1;
 }
 
+
+//   
+//     ####                               ###           ##     ##      #             #                        
+//    #       ####  ## #    ###          #   #   ###     #      #            ####          ###   # ##    #### 
+//    #  ##  #   #  # # #  #####         #      #   #    #      #      #    ###      #    #   #  ##  #  ###   
+//    #   #  #  ##  # # #  #             #   #  #   #    #      #      #      ###    #    #   #  #   #    ### 
+//     ####   ## #  #   #   ###           ###    ###    ###    ###     #    ####     #     ###   #   #  ####  
+//                                                                                                            
+
 static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex)
 {
     // First, check to see if the ball + paddle's rects match up
@@ -413,6 +485,14 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
     return SDL_FALSE;
 }
 
+
+//   
+//     ####                              #   #             #          #           
+//    #       ####  ## #    ###          #   #  ####    ####   ####  ####    ###  
+//    #  ##  #   #  # # #  #####         #   #  #   #  #   #  #   #   #     ##### 
+//    #   #  #  ##  # # #  #             #   #  #   #  #   #  #  ##   #     #     
+//     ####   ## #  #   #   ###           ###   ####    ####   ## #    ##    ###  
+//                                              #                                 
 static void GameUpdate()
 {
     // Get pressed-state for all keyboard keys
@@ -566,6 +646,14 @@ static void GameUpdate()
     }
 }
 
+
+//   
+//     ####                              #####                        #           
+//    #       ####  ## #    ###          #      #   #   ###   # ##   ####    #### 
+//    #  ##  #   #  # # #  #####         ####    # #   #####  ##  #   #     ###   
+//    #   #  #  ##  # # #  #             #       # #   #      #   #   #       ### 
+//     ####   ## #  #   #   ###          #####    #     ###   #   #    ##   ####  
+//                                                                                
 static void GameEventHandler(const SDL_Event * event)
 {
 #if DEBUG_KEYS
@@ -581,6 +669,14 @@ static void GameEventHandler(const SDL_Event * event)
 #endif
 }
 
+
+//   
+//     ####                              ####                       
+//    #       ####  ## #    ###          #   #  # ##    ####  #   # 
+//    #  ##  #   #  # # #  #####         #   #  ##     #   #  # # # 
+//    #   #  #  ##  # # #  #             #   #  #      #  ##  # # # 
+//     ####   ## #  #   #   ###          ####   #       ## #   # #  
+//                                                                  
 static void GameDraw()
 {
     SDL_Rect r;
@@ -629,6 +725,15 @@ static void GameDraw()
     }
 }
 
+
+//   
+//      #                 
+//     # #   ####   ####  
+//    #   #  #   #  #   # 
+//    #####  #   #  #   # 
+//    #   #  ####   ####  
+//           #      #     
+//   
 static uint8_t AppTexturesReload()
 {
     if (ScreenTexture) {
