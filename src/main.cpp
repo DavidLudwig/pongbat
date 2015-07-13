@@ -292,10 +292,10 @@ static uint8_t BallCount = 0;
 //    #       ## #   ####   ####   ###    ###   ####  
 //                                                    
 #pragma mark - Paddles
-static const float PaddleVStep = 0.1f;
+static const float PaddleVStep = 0.1f;          // adjust moving paddle(s) Y-velocity by this much, per game-tick
 static const int16_t PaddleMaxH = 150;
 static const uint16_t PaddleWidth = 16;
-static const float PaddleToBallFriction = 1.f;
+static const float PaddleToBallFriction = 1.f;  // how much should a paddle's Y-velocity be applied to colliding ball(s)?
 struct Paddle {
     float y;            // Y (paddle-top)
     float vy;           // Velocity, Y
@@ -371,7 +371,7 @@ static const uint8_t LaserCutInterval = 3;          // Only perform cuts once pe
 struct Laser {
     float cy;                   // laser center, on Y axis
     float magnitude;            // laser height = magnitude * 2.f
-    uint8_t gameTicksUntilCut;  // default is set via 'LaserCutInterval'
+    uint8_t gameTicksUntilCut;  // number of game-ticks to wait before cutting paddle; default is set via 'LaserCutInterval'
     
     // GetRect -- try getting laser's SDL_Rect, in Screen coordinates
     //   Returns 0 on success, non-zero on failure.  Result rect will be output to 'r'.
