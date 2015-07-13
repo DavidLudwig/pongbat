@@ -472,6 +472,29 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
 
 
 //   
+//     ####                              #####                        #           
+//    #       ####  ## #    ###          #      #   #   ###   # ##   ####    #### 
+//    #  ##  #   #  # # #  #####         ####    # #   #####  ##  #   #     ###   
+//    #   #  #  ##  # # #  #             #       # #   #      #   #   #       ### 
+//     ####   ## #  #   #   ###          #####    #     ###   #   #    ##   ####  
+//                                                                                
+static void GameEventHandler(const SDL_Event * event)
+{
+#if DEBUG_KEYS
+    switch (event->type) {
+        case SDL_KEYDOWN: {
+            switch (event->key.keysym.sym) {
+                case SDLK_r: {
+                    GameInit();
+                } break;
+            }
+        } break;
+    }
+#endif
+}
+
+
+//   
 //     ####                              #   #             #          #           
 //    #       ####  ## #    ###          #   #  ####    ####   ####  ####    ###  
 //    #  ##  #   #  # # #  #####         #   #  #   #  #   #  #   #   #     ##### 
@@ -629,29 +652,6 @@ static void GameUpdate()
             }
         }
     }
-}
-
-
-//   
-//     ####                              #####                        #           
-//    #       ####  ## #    ###          #      #   #   ###   # ##   ####    #### 
-//    #  ##  #   #  # # #  #####         ####    # #   #####  ##  #   #     ###   
-//    #   #  #  ##  # # #  #             #       # #   #      #   #   #       ### 
-//     ####   ## #  #   #   ###          #####    #     ###   #   #    ##   ####  
-//                                                                                
-static void GameEventHandler(const SDL_Event * event)
-{
-#if DEBUG_KEYS
-    switch (event->type) {
-        case SDL_KEYDOWN: {
-            switch (event->key.keysym.sym) {
-                case SDLK_r: {
-                    GameInit();
-                } break;
-            }
-        } break;
-    }
-#endif
 }
 
 
