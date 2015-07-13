@@ -373,7 +373,7 @@ struct Laser {
     
     // GetRect -- try getting laser's SDL_Rect, in Screen coordinates
     //   Returns 0 on success, non-zero on failure.  Result rect will be output to 'r'.
-    uint8_t GetRect(SDL_Rect * r, int paddleIndex) const {
+    uint8_t GetRect(SDL_Rect * r, uint8_t paddleIndex) const {
         if (magnitude == 0.f) {
             return -1;
         }
