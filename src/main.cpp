@@ -19,7 +19,7 @@
 
 #include <SDL.h>
 
-#ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__       // Web-browser API(s)
 #include <emscripten.h>
 #endif
 
@@ -205,6 +205,8 @@ void RectSet(SDL_Rect * r, int x, int y, int w, int h)
 //    #   #  #   #  #   # 
 //    #   #   ###   ####  
 //                        
+// Heads Up Display -- for (eventually) displaying scores, time-left, laser recharge status, etc.
+//
 #pragma mark - HUD
 static const uint16_t HUDHeight = 32;
 
@@ -218,7 +220,7 @@ static const uint16_t HUDHeight = 32;
 //                                      
 #pragma mark - Balls
 static const float BallRadius = 10.f;
-static const float BallChopVelocityY = 2.0f;
+static const float BallChopVelocityY = 2.0f;    // 'chop' ball's Y-velocity to this, on particular collisions
 enum BallType : uint8_t {
     BallTypeNoPlayer = 0,
     BallTypeBlue,
