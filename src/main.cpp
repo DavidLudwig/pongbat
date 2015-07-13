@@ -209,6 +209,10 @@ void RectSet(SDL_Rect * r, int x, int y, int w, int h)
 //
 #pragma mark - HUD
 static const uint16_t HUDHeight = 32;
+static const uint16_t HUDLaserRechargeWidth = 80;
+static const uint16_t HUDLaserRechargeHeight = 16;
+static const uint16_t HUDLaserRechargeXOffset = 40;
+
 
 
 //   
@@ -296,6 +300,7 @@ static const float PaddleVStep = 0.1f;          // adjust moving paddle(s) Y-vel
 static const int16_t PaddleMaxH = 150;
 static const uint16_t PaddleWidth = 16;
 static const float PaddleToBallFriction = 1.f;  // how much should a paddle's Y-velocity be applied to colliding ball(s)?
+static const uint16_t PaddleDefaultLaserRechargeTicks = 600;    // default number of game-ticks (10 ms per tick) to wait for laser rechaarge
 struct Paddle {
     float y;            // Y (paddle-top)
     float vy;           // Velocity, Y
@@ -304,6 +309,7 @@ struct Paddle {
     BallType ballType;  // Convert colliding ball(s) to this BallType
     int16_t cutTop;     // offset from y, to paddle's actual top, after cut(s)
     int16_t cutBottom;  // offset from y, to paddle's actual bottom, after cut(s)
+    uint16_t laserRechargeTicks;    // 0 for ready-to-fire, otherwise # of game-ticks to wait before allowing fire
     
     SDL_Scancode keyUp;     // press this to move up
     SDL_Scancode keyDown;   // press this to move down
@@ -410,6 +416,7 @@ static void GameInit()
         Paddles[i].vy = 0.f;
         Paddles[i].cutTop = 0;
         Paddles[i].cutBottom = PaddleMaxH;
+        Paddles[i].laserRechargeTicks = 0;
     }
     
     Paddles[0].x = 16;
@@ -590,12 +597,20 @@ static void GameUpdate()
             Paddles[i].vy = 0.f;
         }
         
+        // Recharge lasers
+        if (Paddles[i].laserRechargeTicks > 0) {
+            Paddles[i].laserRechargeTicks--;
+        }
+        
         // Fire lasers
         if (Lasers[i].magnitude == 0.f) {
-            if (keyState[Paddles[i].keyLaser]) {
-                Lasers[i].magnitude = LaserInitialMagnitude;
-                Lasers[i].cy = ((float)(Paddles[i].cutBottom - Paddles[i].cutTop) / 2.f) + (float)Paddles[i].cutTop + Paddles[i].Top();
-                Lasers[i].gameTicksUntilCut = 0;
+            if (Paddles[i].laserRechargeTicks == 0) {
+                if (keyState[Paddles[i].keyLaser]) {
+                    Lasers[i].magnitude = LaserInitialMagnitude;
+                    Lasers[i].cy = ((float)(Paddles[i].cutBottom - Paddles[i].cutTop) / 2.f) + (float)Paddles[i].cutTop + Paddles[i].Top();
+                    Lasers[i].gameTicksUntilCut = 0;
+                    Paddles[i].laserRechargeTicks = PaddleDefaultLaserRechargeTicks;
+                }
             }
         }
     }
@@ -714,6 +729,44 @@ static void GameDraw()
     // HUD
     RectSet(&r, 0, ScreenHeight - HUDHeight, ScreenWidth, HUDHeight);
     SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0x55, 0x55, 0x55));
+
+    // HUD, Laser-recharge(s)
+    for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
+//        uint16_t ticks = PaddleDefaultLaserRechargeTicks / 2;     // uncomment to debug recharge-bar apperance
+        uint16_t ticks = Paddles[i].laserRechargeTicks;
+        if (ticks > 0) {
+            // Set starting values:
+            r.y = ScreenHeight - HUDHeight + ((HUDHeight - HUDLaserRechargeHeight) / 2);
+            r.w = HUDLaserRechargeWidth;
+            r.h = HUDLaserRechargeHeight;
+            
+            // Set paddle-specific values:
+            uint32_t barColor;
+            switch (i) {
+                case 0:
+                    r.x = HUDLaserRechargeXOffset;
+                    barColor = SDL_MapRGB(Screen->format, 0x00, 0x00, 0xff);
+                    break;
+                case 1:
+                    r.x = ScreenWidth - r.w - HUDLaserRechargeXOffset;
+                    barColor = SDL_MapRGB(Screen->format, 0xff, 0x00, 0x00);
+                    break;
+                default:
+                    continue;
+            }
+            
+            // Draw recharge background:
+            SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0x00, 0x00, 0x00));
+
+            // Draw recharge value, in a smaller box:
+            r.x++;
+            r.y++;
+            r.w -= 2;
+            r.h -= 2;
+            r.w = MathRound((float)r.w * ((float)ticks / (float)PaddleDefaultLaserRechargeTicks));
+            SDL_FillRect(Screen, &r, barColor);
+        }
+    }
     
     // Paddles
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
