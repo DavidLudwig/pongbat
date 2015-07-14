@@ -103,11 +103,11 @@ ImageID ImageIDAlloc()
 }
 
 // ImageLoad -- load an image from disk, to a new ImageID
-ImageID ImageLoad(const char * filename)
+SDL_bool ImageLoad(ImageID * outImageID, const char * filename)
 {
     if (ImageNext > (SDL_arraysize(Images) - 1)) {
         SDL_Log("%s, Out of ImageIDs!", __FUNCTION__);
-        return 0;
+        return SDL_FALSE;
     }
     
     ImageID id;
@@ -119,7 +119,7 @@ ImageID ImageLoad(const char * filename)
                 __FUNCTION__,
                 (filename ? filename : "(null)"),
                 stbi_failure_reason());
-        return 0;
+        return SDL_FALSE;
     }
     
     surface = SDL_CreateRGBSurfaceFrom(data, w, h, 32, w * 4, ImageRMask, ImageGMask, ImageBMask, ImageAMask);
@@ -128,7 +128,7 @@ ImageID ImageLoad(const char * filename)
                 __FUNCTION__,
                 SDL_GetError());
         stbi_image_free(data);
-        return 0;
+        return SDL_FALSE;
     }
     
     id = ImageIDAlloc();
@@ -136,15 +136,16 @@ ImageID ImageLoad(const char * filename)
         SDL_Log("%s, ImageIDAlloc() failed", __FUNCTION__);
         SDL_FreeSurface(surface);
         stbi_image_free(data);
-        return 0;
+        return SDL_FALSE;
     }
     
     Images[id] = surface;
-    return id;
+    *outImageID = id;
+    return SDL_TRUE;
 }
 
 // ImageCreate -- create a new image, to a new ImageID
-ImageID ImageCreate(int w, int h)
+ImageID ImageCreate(ImageID * outImageID, int w, int h)
 {
     ImageID id;
     SDL_Surface * surface = SDL_CreateRGBSurface(0, w, h, 32, ImageRMask, ImageGMask, ImageBMask, ImageAMask);
@@ -152,18 +153,19 @@ ImageID ImageCreate(int w, int h)
         SDL_Log("%s, SDL_CreateRGBSurface failed: %s",
                 __FUNCTION__,
                 SDL_GetError());
-        return 0;
+        return SDL_FALSE;
     }
     
     id = ImageIDAlloc();
     if ( ! id) {
         SDL_Log("%s, ImageIDAlloc() failed", __FUNCTION__);
         SDL_FreeSurface(surface);
-        return 0;
+        return SDL_FALSE;
     }
     
     Images[id] = surface;
-    return id;
+    *outImageID = id;
+    return SDL_TRUE;
 }
 
 // ImageGetAlphaUnshifted -- gets a pixel's alpha channel, without shifting it to the MSB
@@ -396,6 +398,29 @@ struct Laser {
         return 0;
     }
 } Lasers[2];
+
+
+//
+//     ####                              ####                  ##                      # 
+//    #       ####  ## #    ###          #   #  # ##    ###     #     ###    ####   #### 
+//    #  ##  #   #  # # #  #####         ####   ##     #####    #    #   #  #   #  #   # 
+//    #   #  #  ##  # # #  #             #      #      #        #    #   #  #  ##  #   # 
+//     ####   ## #  #   #   ###          #      #       ###    ###    ###    ## #   #### 
+//
+// One-time loading of game assets (images, sounds, etc.)
+//
+#pragma mark - Game Preload
+
+static SDL_bool GamePreload()
+{
+    return (
+        ImageLoad(&ImageIDBallBlue, "Data/Images/BallBlue.png") &&
+        ImageLoad(&ImageIDBallNoPlayer, "Data/Images/BallNoPlayer.png") &&
+        ImageLoad(&ImageIDBallRed, "Data/Images/BallRed.png") &&
+        ImageCreate(&ImageIDPaddleBlue, PaddleWidth, PaddleMaxH) &&
+        ImageCreate(&ImageIDPaddleRed, PaddleWidth, PaddleMaxH)
+    ) ? SDL_TRUE : SDL_FALSE;
+}
 
 
 //   
@@ -950,13 +975,7 @@ int main(int argc, char * argv[])
 #endif
     
     // Load/create, all images
-    if ( ! ((ImageIDBallBlue = ImageLoad("Data/Images/BallBlue.png")) &&
-            (ImageIDBallNoPlayer = ImageLoad("Data/Images/BallNoPlayer.png")) &&
-            (ImageIDBallRed = ImageLoad("Data/Images/BallRed.png")) &&
-            (ImageIDPaddleBlue = ImageCreate(PaddleWidth, PaddleMaxH)) &&
-            (ImageIDPaddleRed = ImageCreate(PaddleWidth, PaddleMaxH))
-            ))
-    {
+    if ( ! GamePreload()) {
         return 1;
     }
 
