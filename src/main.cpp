@@ -430,7 +430,7 @@ static SDL_bool GamePreload()
         return SDL_FALSE;
     }
     
-    SDL_SetSurfaceBlendMode(Images[ImageIDBackgroundTile], SDL_BLENDMODE_NONE);
+    SDL_SetSurfaceBlendMode(Images[ImageIDBackgroundTile], SDL_BLENDMODE_NONE);     // prevent background tile from using CPU-costly blend, important on Emscripten
     return SDL_TRUE;
 }
 
