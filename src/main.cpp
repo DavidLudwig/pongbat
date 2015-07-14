@@ -300,7 +300,7 @@ static const float PaddleVStep = 0.1f;          // adjust moving paddle(s) Y-vel
 static const int16_t PaddleMaxH = 150;
 static const uint16_t PaddleWidth = 16;
 static const float PaddleToBallFriction = 1.f;  // how much should a paddle's Y-velocity be applied to colliding ball(s)?
-static const uint16_t PaddleDefaultLaserRechargeTicks = 600;    // default number of game-ticks (10 ms per tick) to wait for laser rechaarge
+static const uint16_t PaddleDefaultLaserRechargeTicks = 450;    // default number of game-ticks (10 ms per tick) to wait for laser rechaarge
 struct Paddle {
     float y;            // Y (paddle-top)
     float vy;           // Velocity, Y
@@ -371,8 +371,8 @@ struct Paddle {
 //    #####   ## #  ####    ###   #      ####  
 //                                             
 #pragma mark - Lasers
-static const float LaserMagnitudeStep = -0.4f;      // Adjust laser magnitude by this much, per game-tick
-static const float LaserInitialMagnitude = 8.f;     // Default laser magnitutde; TODO: make this adjustable, per-paddle (for laser-upgrades)
+static const float LaserMagnitudeStep = -0.19f;      // Adjust laser magnitude by this much, per game-tick
+static const float LaserInitialMagnitude = 7.f;     // Default laser magnitutde; TODO: make this adjustable, per-paddle (for laser-upgrades)
 static const uint8_t LaserCutInterval = 3;          // Only perform cuts once per this number of game-ticks
 struct Laser {
     float cy;                   // laser center, on Y axis
