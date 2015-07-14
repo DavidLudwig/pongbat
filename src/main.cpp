@@ -757,7 +757,7 @@ static void GameDraw()
 
     // HUD, Laser-recharge(s)
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
-//        uint16_t ticks = PaddleDefaultLaserRechargeTicks / 2;     // uncomment to debug recharge-bar apperance
+//        uint16_t ticks = PaddleDefaultLaserRechargeTicks / 2;     // uncomment to debug recharge-bar appearance
         uint16_t ticks = Paddles[i].laserRechargeTicks;
         if (ticks > 0) {
             // Set starting values:
