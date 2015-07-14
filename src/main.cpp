@@ -91,6 +91,9 @@ static ImageID ImageIDBallNoPlayer;
 static ImageID ImageIDBallRed;
 static ImageID ImageIDPaddleBlue;
 static ImageID ImageIDPaddleRed;
+static ImageID ImageIDPaddleBlueTemplate;
+static ImageID ImageIDPaddleRedTemplate;
+static ImageID ImageIDBackgroundTile;
 
 // ImageIDAlloc -- allocate a new ImageID
 ImageID ImageIDAlloc()
@@ -413,13 +416,22 @@ struct Laser {
 
 static SDL_bool GamePreload()
 {
-    return (
+    if ( ! (
         ImageLoad(&ImageIDBallBlue, "Data/Images/BallBlue.png") &&
         ImageLoad(&ImageIDBallNoPlayer, "Data/Images/BallNoPlayer.png") &&
         ImageLoad(&ImageIDBallRed, "Data/Images/BallRed.png") &&
         ImageCreate(&ImageIDPaddleBlue, PaddleWidth, PaddleMaxH) &&
-        ImageCreate(&ImageIDPaddleRed, PaddleWidth, PaddleMaxH)
-    ) ? SDL_TRUE : SDL_FALSE;
+        ImageCreate(&ImageIDPaddleRed, PaddleWidth, PaddleMaxH) &&
+        ImageLoad(&ImageIDPaddleBlueTemplate, "Data/Images/PaddleBlue.png") &&
+        ImageLoad(&ImageIDPaddleRedTemplate, "Data/Images/PaddleRed.png") &&
+        ImageLoad(&ImageIDBackgroundTile, "Data/Images/BackgroundTile.png")
+    ))
+    {
+        return SDL_FALSE;
+    }
+    
+    SDL_SetSurfaceBlendMode(Images[ImageIDBackgroundTile], SDL_BLENDMODE_NONE);
+    return SDL_TRUE;
 }
 
 
@@ -453,8 +465,8 @@ static void GameInit()
     Paddles[1].ballType = BallTypeRed;
 
     // Paddle contents
-    SDL_FillRect(Images[ImageIDPaddleBlue], NULL, SDL_MapRGB(Images[ImageIDPaddleBlue]->format, 0x00, 0x00, 0xff));
-    SDL_FillRect(Images[ImageIDPaddleRed],  NULL, SDL_MapRGB(Images[ImageIDPaddleRed]->format,  0xff, 0x00, 0x00));
+    SDL_BlitSurface(Images[ImageIDPaddleBlueTemplate], NULL, Images[ImageIDPaddleBlue], NULL);
+    SDL_BlitSurface(Images[ImageIDPaddleRedTemplate],  NULL, Images[ImageIDPaddleRed],  NULL);
     
     // Paddle input keys
     // TODO: set to SDL_SCANCODE_UNKNOWN for AI control?
@@ -745,15 +757,26 @@ static void GameUpdate()
 //   It is NOT guaranteed to be called at a fixed rate!
 static void GameDraw()
 {
-    SDL_Rect r;
+    SDL_Rect r, r2;
     
     // Background
     RectSet(&r, 0, 0, ScreenWidth, ScreenHeight - HUDHeight);
-    SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xaa, 0xaa, 0xaa));
+//    SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xaa, 0xaa, 0xaa));
+    SDL_SetClipRect(Screen, &r);
+    r2.w = Images[ImageIDBackgroundTile]->w;
+    r2.h = Images[ImageIDBackgroundTile]->h;
+    for (uint16_t y = 0; y < r.h; y += r2.h) {
+        for (uint16_t x = 0; x < r.w; x += r2.w) {
+            r2.x = x;
+            r2.y = y;
+            SDL_BlitSurface(Images[ImageIDBackgroundTile], NULL, Screen, &r2);
+        }
+    }
+    SDL_SetClipRect(Screen, NULL);
     
     // HUD
     RectSet(&r, 0, ScreenHeight - HUDHeight, ScreenWidth, HUDHeight);
-    SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0x55, 0x55, 0x55));
+    SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xdd, 0xdd, 0xdd));
 
     // HUD, Laser-recharge(s)
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {

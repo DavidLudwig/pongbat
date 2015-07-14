@@ -52,6 +52,9 @@ emcc src/main.cpp -s USE_SDL=2 -O3 -std=c++11 \
 	--preload-file "Data/Images/BallBlue.png" \
 	--preload-file "Data/Images/BallNoPlayer.png" \
 	--preload-file "Data/Images/BallRed.png" \
+	--preload-file "Data/Images/PaddleBlue.png" \
+	--preload-file "Data/Images/PaddleRed.png" \
+	--preload-file "Data/Images/BackgroundTile.png" \
 	|| die "Compile failed"
 
 # Install
