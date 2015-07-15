@@ -203,31 +203,42 @@ void RectSet(SDL_Rect * r, int x, int y, int w, int h)
 }
 
 
+//   
+//    #####                 #    
+//      #     ###   #  #   ####  
+//      #    #####   ##     #    
+//      #    #       ##     #    
+//      #     ###   #  #     ##  
+//                               
 #pragma mark - Text
 
+// Use the single-file, stb_truetype library to handle the bulk of text-rendering
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
-typedef int8_t FontID;
-static const uint16_t FontBitmapWidth = 512;
+typedef int8_t FontID;                          // valid fonts are indexed at 0 and above; invalid fonts should be set to -1
+static const uint16_t FontBitmapWidth = 512;    // default size for baked font character pixels
 static const uint16_t FontBitmapHeight = 512;
 static const unsigned char FontFirstChar = 32;  // first_char (' ')
 static const unsigned char FontCharCount = 96;  // ... to 'DEL' (32 to 127)
 
 struct FontChar
 {
-    unsigned short x,y;
-    unsigned short w,h;
-    int xoff,yoff,xadvance;
+    unsigned short x,y;         // position of character, inside baked bitmap
+    unsigned short w,h;         // size of character, inside baked bitmap
+    int xoff,yoff,xadvance;     // text-layout attributes
 };
 
 union Font {
+    // Pre-baked 'input' data -- this will get overwritten when the font is 'baked', a process which renders the font's characters
     struct {
         FontID * fontID;
         int fontOffset;
         float pixelHeight;
         char file[1024];
     } input;
+
+    // 'Baked' font data -- after baking (via FontBake()), the font will be ready to display
     struct {
         FontID * fontID;
         int ascent;
@@ -238,12 +249,14 @@ union Font {
     } baked;
 };
 
+// Predefined fonts
 static FontID FontIDHUDScores = -1;
 static Font Fonts[] = {
     { &FontIDHUDScores, 0, 20.0f, "Data/Fonts/FogSans.ttf" }
 };
 
-STBTT_DEF SDL_bool FontBake(FontID fontID, const unsigned char * rawFontData)
+// FontBake -- 'Bakes' (prepares) a single font for rendering
+SDL_bool FontBake(FontID fontID, const unsigned char * rawFontData)
 {
     float scale;
     int x,y,bottom_y, i;
@@ -307,23 +320,25 @@ STBTT_DEF SDL_bool FontBake(FontID fontID, const unsigned char * rawFontData)
     return SDL_TRUE;
 }
 
-void FontPreloadAll()
+// FontPreloadAll -- Bakes all fonts
+SDL_bool FontPreloadAll()
 {
-    unsigned char ttfBuffer[1 << 20];
-    
+    unsigned char rawFontData[1 << 20];
     for (FontID i = 0; i < SDL_arraysize(Fonts); ++i) {
         FILE * fp = fopen(Fonts[i].input.file, "rb");
         if (fp) {
-            fread(ttfBuffer, 1, sizeof(ttfBuffer), fp);
+            fread(rawFontData, 1, sizeof(rawFontData), fp);
             fclose(fp);
-            if ( ! FontBake(i, ttfBuffer)) {
+            if ( ! FontBake(i, rawFontData)) {
                 SDL_Log("ERROR: Couldn't load font: %s", Fonts[i].input.file);
-                return;
+                return SDL_FALSE;
             }
         }
     }
+    return SDL_TRUE;
 }
 
+// TextDrawChar-- renders a single character onto the global 'Screen'
 void TextDrawChar(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t * scrx, int16_t * scry, char ch)
 {
     if (ch < 32 || ch > 127) {
@@ -365,6 +380,7 @@ void TextDrawChar(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t * scrx
     *scrx += baked->xadvance;
 }
 
+// TextDraw -- renders a string of characters onto the global 'Screen'
 void TextDraw(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t x, int16_t y, const char * text)
 {
     if (fontID < 0 || fontID >= SDL_arraysize(Fonts)) {
@@ -593,11 +609,10 @@ struct Laser {
 //
 #pragma mark - Game Preload
 
-void FontPreloadAll();
-
 static SDL_bool GamePreload()
 {
     if ( ! (
+        FontPreloadAll() &&
         ImageLoad(&ImageIDBallBlue, "Data/Images/BallBlue.png") &&
         ImageLoad(&ImageIDBallNoPlayer, "Data/Images/BallNoPlayer.png") &&
         ImageLoad(&ImageIDBallRed, "Data/Images/BallRed.png") &&
@@ -612,8 +627,6 @@ static SDL_bool GamePreload()
     }
     
     SDL_SetSurfaceBlendMode(Images[ImageIDBackgroundTile], SDL_BLENDMODE_NONE);     // prevent background tile from using CPU-costly blend, important on Emscripten
-    
-    FontPreloadAll();
     
     return SDL_TRUE;
 }
