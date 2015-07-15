@@ -1158,7 +1158,10 @@ static uint8_t AppInit()
         SDL_Log("%s, SDL_RenderSetLogicalSize failed: %s", __FUNCTION__, SDL_GetError());
         return -1;
     }
-    
+
+    // Be sure to use the same color-channel settings as other images.  Not doing
+    // so can cause SDL to use slower blitters, which can have a significant
+    // impact on Emscripten performance.
     Screen = SDL_CreateRGBSurface(0, ScreenWidth, ScreenHeight, 32, ImageRMask, ImageGMask, ImageBMask, ImageAMask);
     if ( ! Screen) {
         SDL_Log("%s, SDL_CreateRGBSurface failed [screen creation]: %s", __FUNCTION__, SDL_GetError());
