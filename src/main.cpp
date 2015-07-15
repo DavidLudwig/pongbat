@@ -203,6 +203,183 @@ void RectSet(SDL_Rect * r, int x, int y, int w, int h)
 }
 
 
+#pragma mark - Text
+
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
+
+typedef int8_t FontID;
+static const uint16_t FontBitmapWidth = 512;
+static const uint16_t FontBitmapHeight = 512;
+static const unsigned char FontFirstChar = 32;  // first_char (' ')
+static const unsigned char FontCharCount = 96;  // ... to 'DEL' (32 to 127)
+
+struct FontChar
+{
+    unsigned short x,y;
+    unsigned short w,h;
+    int xoff,yoff,xadvance;
+};
+
+union Font {
+    struct {
+        FontID * fontID;
+        int fontOffset;
+        float pixelHeight;
+        char file[1024];
+    } input;
+    struct {
+        FontID * fontID;
+        int ascent;
+        int descent;
+        int lineGap;
+        FontChar chars[96];
+        unsigned char bitmap[FontBitmapWidth * FontBitmapHeight];    // 8-bit font alpha data, alfo i
+    } baked;
+};
+
+static FontID FontIDHUDScores = -1;
+static Font Fonts[] = {
+    { &FontIDHUDScores, 0, 20.0f, "Data/Fonts/FogSans.ttf" }
+};
+
+STBTT_DEF SDL_bool FontBake(FontID fontID, const unsigned char * rawFontData)
+{
+    float scale;
+    int x,y,bottom_y, i;
+    stbtt_fontinfo f;
+    
+    // Make copies of relevant input params
+    int offset = Fonts[fontID].input.fontOffset;
+    float pixel_height = Fonts[fontID].input.pixelHeight;
+    
+    // Misc constants
+    const int pw = FontBitmapWidth;
+    const int ph = FontBitmapHeight;
+    
+    // Get pointers to output params
+    unsigned char * pixels = Fonts[fontID].baked.bitmap;
+    FontChar * chardata = Fonts[i].baked.chars;
+    
+    if (!stbtt_InitFont(&f, rawFontData, offset)) {
+        return SDL_FALSE;
+    }
+    
+    STBTT_memset(pixels, 0, pw*ph); // background of 0 around pixels
+    x=y=1;
+    bottom_y = 1;
+
+    scale = stbtt_ScaleForPixelHeight(&f, pixel_height);
+
+    stbtt_GetFontVMetrics(&f, &Fonts[fontID].baked.ascent, &Fonts[fontID].baked.descent, &Fonts[fontID].baked.lineGap);
+    Fonts[fontID].baked.ascent *= scale;
+    Fonts[fontID].baked.descent *= scale;
+    Fonts[fontID].baked.lineGap *= scale;
+    
+    for (i=0; i < FontCharCount; ++i) {
+        int advance, lsb, x0,y0,x1,y1,gw,gh;
+        int g = stbtt_FindGlyphIndex(&f, FontFirstChar + i);
+        stbtt_GetGlyphHMetrics(&f, g, &advance, &lsb);
+        stbtt_GetGlyphBitmapBox(&f, g, scale,scale, &x0,&y0,&x1,&y1);
+        gw = x1-x0;
+        gh = y1-y0;
+        if (x + gw + 1 >= pw)
+            y = bottom_y, x = 1; // advance to next row
+        if (y + gh + 1 >= ph) // check if it fits vertically AFTER potentially moving to next row
+            return SDL_FALSE;
+        STBTT_assert(x+gw < pw);
+        STBTT_assert(y+gh < ph);
+        stbtt_MakeGlyphBitmap(&f, pixels+x+y*pw, gw,gh,pw, scale,scale, g);
+        chardata[i].x = (stbtt_int16) x;
+        chardata[i].y = (stbtt_int16) y;
+        chardata[i].w = gw;
+        chardata[i].h = gh;
+        chardata[i].xadvance = MathRound(scale * advance);
+        chardata[i].xoff     = x0;
+        chardata[i].yoff     = y0;
+        x = x + gw + 1;
+        if (y+gh+1 > bottom_y)
+            bottom_y = y+gh+1;
+    }
+    
+    *Fonts[fontID].baked.fontID = fontID;
+    
+    return SDL_TRUE;
+}
+
+void FontPreloadAll()
+{
+    unsigned char ttfBuffer[1 << 20];
+    
+    for (FontID i = 0; i < SDL_arraysize(Fonts); ++i) {
+        FILE * fp = fopen(Fonts[i].input.file, "rb");
+        if (fp) {
+            fread(ttfBuffer, 1, sizeof(ttfBuffer), fp);
+            fclose(fp);
+            if ( ! FontBake(i, ttfBuffer)) {
+                SDL_Log("ERROR: Couldn't load font: %s", Fonts[i].input.file);
+                return;
+            }
+        }
+    }
+}
+
+void TextDrawChar(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t * scrx, int16_t * scry, char ch)
+{
+    if (ch < 32 || ch > 127) {
+        return;
+    } else if (fontID < 0 || fontID >= SDL_arraysize(Fonts)) {
+        return;
+    }
+    FontChar * baked = &Fonts[fontID].baked.chars[ch - 32];
+    for (uint16_t iy = 0; iy < baked->h; ++iy) {
+        for (uint16_t ix = 0; ix < baked->w; ++ix) {
+            int16_t sx = baked->x + ix;
+            int16_t sy = baked->y + iy;
+            int16_t dx = *scrx + MathRound(baked->xoff) + ix;
+            int16_t dy = *scry + Fonts[fontID].baked.ascent + baked->yoff + iy;
+            
+            uint32_t dp = ((uint32_t *)Screen->pixels)[dx + (dy * Screen->w)];
+            uint8_t dr = (dp & Screen->format->Rmask) >> Screen->format->Rshift;
+            uint8_t dg = (dp & Screen->format->Gmask) >> Screen->format->Gshift;
+            uint8_t db = (dp & Screen->format->Bmask) >> Screen->format->Bshift;
+            uint8_t da = (dp & Screen->format->Amask) >> Screen->format->Ashift;
+            uint8_t sa = Fonts[fontID].baked.bitmap[sx + (sy << 9)];
+            
+            //       ((MAX - sa) * dc) + (sa * sc)
+            // dc = --------------------------------
+            //                   MAX
+            
+            dr = (((255 - sa) * dr) + (sa * r)) >> 8;
+            dg = (((255 - sa) * dg) + (sa * g)) >> 8;
+            db = (((255 - sa) * db) + (sa * b)) >> 8;
+            dp = \
+                (dr << Screen->format->Rshift) |
+                (dg << Screen->format->Gshift) |
+                (db << Screen->format->Bshift) |
+                (da << Screen->format->Ashift);
+            
+            ((uint32_t *)Screen->pixels)[dx + (dy * ScreenWidth)] = dp;
+        }
+    }
+    *scrx += baked->xadvance;
+}
+
+void TextDraw(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t x, int16_t y, const char * text)
+{
+    if (fontID < 0 || fontID >= SDL_arraysize(Fonts)) {
+        return;
+    }
+
+    int16_t curx = x;
+    int16_t cury = y;
+    while (*text != '\0') {
+        TextDrawChar(fontID, r, g, b, &curx, &cury, *text);
+        ++text;
+    }
+}
+
+
 //   
 //    #   #  #   #  ####  
 //    #   #  #   #  #   # 
@@ -216,7 +393,9 @@ void RectSet(SDL_Rect * r, int x, int y, int w, int h)
 static const uint16_t HUDHeight = 32;
 static const uint16_t HUDLaserRechargeWidth = 80;
 static const uint16_t HUDLaserRechargeHeight = 16;
-static const uint16_t HUDLaserRechargeXOffset = 40;
+static const uint16_t HUDLaserRechargeXOffset = 180;
+static const int16_t HUDScoresXOffsets[] = { 35, 530 };
+static const int16_t HUDScoresYOffset = 5;
 
 
 
@@ -414,6 +593,8 @@ struct Laser {
 //
 #pragma mark - Game Preload
 
+void FontPreloadAll();
+
 static SDL_bool GamePreload()
 {
     if ( ! (
@@ -431,6 +612,9 @@ static SDL_bool GamePreload()
     }
     
     SDL_SetSurfaceBlendMode(Images[ImageIDBackgroundTile], SDL_BLENDMODE_NONE);     // prevent background tile from using CPU-costly blend, important on Emscripten
+    
+    FontPreloadAll();
+    
     return SDL_TRUE;
 }
 
@@ -777,6 +961,9 @@ static void GameDraw()
     // HUD
     RectSet(&r, 0, ScreenHeight - HUDHeight, ScreenWidth, HUDHeight);
     SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xdd, 0xdd, 0xdd));
+    
+    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[0], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: ...");
+    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[1], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: ...");
 
     // HUD, Laser-recharge(s)
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
@@ -972,7 +1159,7 @@ static uint8_t AppInit()
         return -1;
     }
     
-    Screen = SDL_CreateRGBSurface(0, ScreenWidth, ScreenHeight, 32, 0, 0, 0, 0);
+    Screen = SDL_CreateRGBSurface(0, ScreenWidth, ScreenHeight, 32, ImageRMask, ImageGMask, ImageBMask, ImageAMask);
     if ( ! Screen) {
         SDL_Log("%s, SDL_CreateRGBSurface failed [screen creation]: %s", __FUNCTION__, SDL_GetError());
         return -1;

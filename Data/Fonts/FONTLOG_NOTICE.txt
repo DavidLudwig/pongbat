@@ -1,0 +1,7 @@
+This Font is a Derivative of the Apache Licensed open source font, Clear Sans.
+
+Change Log:
+
+New lowercase L, new Widths and Outline styles added, additions of basic Roman Numerals and addition of Russian Ruble sign.
+
+Additions and changed character contributed by Cannot Into Space Fonts.

@@ -52,6 +52,7 @@
 		75A7886E1B48718000B929D1 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		75A788881B48736200B929D1 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; usesTabs = 0; };
 		75A7888B1B4873A900B929D1 /* SDL.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = SDL.xcodeproj; path = ../external/SDL/Xcode/SDL/SDL.xcodeproj; sourceTree = "<group>"; };
+		75C89AE91B55917D00A48750 /* stb_truetype.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_truetype.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -107,6 +108,7 @@
 		75A788871B48730700B929D1 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				75C89AE91B55917D00A48750 /* stb_truetype.h */,
 				75A6B37C1B4C91290079EC48 /* stb_image.h */,
 				75A788881B48736200B929D1 /* main.cpp */,
 			);
