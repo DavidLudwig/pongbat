@@ -339,14 +339,14 @@ SDL_bool FontPreloadAll()
 }
 
 // TextDrawChar-- renders a single character onto the global 'Screen'
-void TextDrawChar(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t * scrx, int16_t * scry, char ch)
+void TextDrawChar(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t * scrx, int16_t * scry, unsigned char ch)
 {
-    if (ch < 32 || ch > 127) {
+    if (ch < FontFirstChar || ch > (FontFirstChar + FontCharCount)) {
         return;
     } else if (fontID < 0 || fontID >= SDL_arraysize(Fonts)) {
         return;
     }
-    FontChar * baked = &Fonts[fontID].baked.chars[ch - 32];
+    FontChar * baked = &Fonts[fontID].baked.chars[ch - FontFirstChar];
     for (uint16_t iy = 0; iy < baked->h; ++iy) {
         for (uint16_t ix = 0; ix < baked->w; ++ix) {
             int16_t sx = baked->x + ix;
@@ -359,7 +359,7 @@ void TextDrawChar(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t * scrx
             uint8_t dg = (dp & Screen->format->Gmask) >> Screen->format->Gshift;
             uint8_t db = (dp & Screen->format->Bmask) >> Screen->format->Bshift;
             uint8_t da = (dp & Screen->format->Amask) >> Screen->format->Ashift;
-            uint8_t sa = Fonts[fontID].baked.bitmap[sx + (sy << 9)];
+            uint8_t sa = Fonts[fontID].baked.bitmap[sx + (sy * FontBitmapWidth)];
             
             //       ((MAX - sa) * dc) + (sa * sc)
             // dc = --------------------------------
@@ -386,7 +386,6 @@ void TextDraw(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t x, int16_t
     if (fontID < 0 || fontID >= SDL_arraysize(Fonts)) {
         return;
     }
-
     int16_t curx = x;
     int16_t cury = y;
     while (*text != '\0') {
