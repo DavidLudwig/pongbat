@@ -27,6 +27,9 @@
 #include <unistd.h>         // for chdir()
 #endif
 
+#include <ctime>            // for time(), which is passed into srand()
+#include <cstdlib>          // for rand(), srand()
+
 
 //   
 //    ####          #                            ###           #       #                        
@@ -39,6 +42,7 @@
 #pragma mark - Debug Options
 //#define DEBUG_PADDLE_DRAWING 1                  // Uncomment to draw unseen paddle parts
 //#define DEBUG_KEYS 1                            // Uncomment to enable debug keys (via keyboard)
+//#define DEBUG_SCORE_ZONE_DRAWING 1                // Uncomment to draw score-zones
 
 
 //
@@ -191,6 +195,20 @@ static uint32_t ImageGetAlphaUnshifted(SDL_Surface * image, uint16_t x, uint16_t
 int MathRound(float x)
 {
     return (x + 0.5f);
+}
+
+// MathRandRangeF -- get random float in inclusive-range; granularity limited to RAND_MAX
+float MathRandRangeF(float a, float b)
+{
+    float max = SDL_max(a, b);
+    float min = SDL_min(a, b);
+    return min + (((float)(rand() % RAND_MAX) / (float)RAND_MAX) * (max - min));
+}
+
+// MathRandRangeF -- get random int in inclusive-range; granularity limited to RAND_MAX
+int MathRandRangeI(int a, int b)
+{
+    return MathRound(MathRandRangeF(a, b));
 }
 
 // RectSet -- sets the contents of an SDL_Rect
@@ -381,16 +399,21 @@ void TextDrawChar(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t * scrx
 }
 
 // TextDraw -- renders a string of characters onto the global 'Screen'
-void TextDraw(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t x, int16_t y, const char * text)
+void TextDraw(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t x, int16_t y, const char * textFormat, ...)
 {
     if (fontID < 0 || fontID >= SDL_arraysize(Fonts)) {
         return;
     }
+    va_list ap;
+    va_start(ap, textFormat);
+    char formatted[1024];
+    SDL_vsnprintf(formatted, SDL_arraysize(formatted), textFormat, ap);
     int16_t curx = x;
     int16_t cury = y;
-    while (*text != '\0') {
-        TextDrawChar(fontID, r, g, b, &curx, &cury, *text);
-        ++text;
+    char * currentChar = formatted;
+    while (*currentChar != '\0') {
+        TextDrawChar(fontID, r, g, b, &curx, &cury, *currentChar);
+        ++currentChar;
     }
 }
 
@@ -485,6 +508,18 @@ struct Ball {
     }
 } Balls[32];
 static uint8_t BallCount = 0;
+
+// BallRespawn -- [re]spawns an existing ball
+// TODO: re-jigger this into a plain, BallSpawn() function, which adjusts BallCount as appropriate
+void BallRespawn(uint8_t ballIndex)
+{
+    SDL_assert_paranoid(ballIndex < BallCount);
+    Balls[ballIndex].cx = ScreenWidth / 2.f;
+    Balls[ballIndex].cy = (ScreenHeight - HUDHeight) / 2.f;
+    Balls[ballIndex].vx = MathRandRangeF(0.5f, 3.0f) * (MathRandRangeI(0,1) ? 1.f : -1.f);
+    Balls[ballIndex].vy = MathRandRangeF(0.5f, 2.0f) * (MathRandRangeI(0,1) ? 1.f : -1.f);
+    Balls[ballIndex].type = BallTypeNoPlayer;
+}
 
 
 //   
@@ -598,6 +633,24 @@ struct Laser {
 
 
 //
+//     ####                         #                 
+//    #       ###    ###   # ##          # ##    #### 
+//     ###   #      #   #  ##       #    ##  #  #   # 
+//        #  #      #   #  #        #    #   #   #### 
+//    ####    ###    ###   #        #    #   #      # 
+//                                               ###  
+//
+#pragma mark - Scoring
+
+static uint16_t Scores[2];
+static int16_t ScoreZoneWidth = 4;
+static SDL_Rect ScoreZones[] = {
+    { 0,                            0, ScoreZoneWidth, ScreenHeight - HUDHeight },
+    { ScreenWidth - ScoreZoneWidth, 0, ScoreZoneWidth, ScreenHeight - HUDHeight }
+};
+
+
+//
 //     ####                              ####                  ##                      # 
 //    #       ####  ## #    ###          #   #  # ##    ###     #     ###    ####   #### 
 //    #  ##  #   #  # # #  #####         ####   ##     #####    #    #   #  #   #  #   # 
@@ -643,6 +696,9 @@ static SDL_bool GamePreload()
 // GameInit -- [re]initializes a new round of gameplay
 static void GameInit()
 {
+    // Scoring
+    SDL_memset(&Scores, 0, sizeof(Scores));
+
     // Paddle position
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
         Paddles[i].y = (ScreenHeight - HUDHeight - PaddleMaxH) / 2.f;
@@ -679,12 +735,8 @@ static void GameInit()
     }
     
     // Spawn a ball
-    Balls[0].cx = ScreenWidth / 2.f;
-    Balls[0].cy = (ScreenHeight - HUDHeight) / 2.f;
-    Balls[0].vx = -1.3f;
-    Balls[0].vy = -0.7f;
-    Balls[0].type = BallTypeNoPlayer;
     BallCount = 1;
+    BallRespawn(0);
 }
 
 
@@ -935,6 +987,17 @@ static void GameUpdate()
                 }
             }
         }
+
+        // Ball/score-zone collisions
+        SDL_Rect ballRect;
+        Balls[i].GetRect(&ballRect);
+        for (uint8_t j = 0; j < SDL_arraysize(ScoreZones); ++j) {
+            if (SDL_HasIntersection(&ballRect, &ScoreZones[j])) {
+                // For now, just add score, then immediately respawn the ball
+                Scores[(j % 2) == 0]++;
+                BallRespawn(i);
+            }
+        }
     }
 }
 
@@ -974,8 +1037,8 @@ static void GameDraw()
     RectSet(&r, 0, ScreenHeight - HUDHeight, ScreenWidth, HUDHeight);
     SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xdd, 0xdd, 0xdd));
     
-    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[0], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: ...");
-    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[1], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: ...");
+    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[0], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: %d", Scores[0]);
+    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[1], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: %d", Scores[1]);
 
     // HUD, Laser-recharge(s)
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
@@ -1049,6 +1112,13 @@ static void GameDraw()
             SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0, 0, 0));
         }
     }
+    
+    // Scoring zones
+#if DEBUG_SCORE_ZONE_DRAWING
+    for (uint8_t i = 0; i < SDL_arraysize(ScoreZones); ++i) {
+        SDL_FillRect(Screen, &ScoreZones[i], SDL_MapRGB(Screen->format, 0x00, 0xff, 0x00));
+    }
+#endif
 }
 
 
@@ -1151,6 +1221,8 @@ static void AppUpdate()
 // AppInit -- performs one-time app initialization
 static uint8_t AppInit()
 {
+    srand((unsigned int)time(0));     // Seed C-standard random number generator
+    
     SDL_SetHint("SDL_HINT_RENDER_VSYNC", "1");
     
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
