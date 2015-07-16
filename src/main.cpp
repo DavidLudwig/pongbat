@@ -716,8 +716,9 @@ static SDL_bool GamePreload()
 #pragma mark - Game Init
 
 enum : uint8_t {
-    GAME_INIT_DEFAULT       = 0,
-    GAME_INIT_KEEP_SCORES   = (1 << 0),
+    GAME_INIT_DEFAULT               = 0,
+    GAME_INIT_KEEP_SCORES           = (1 << 0),
+    GAME_INIT_KEEP_PADDLE_POSITIONS = (1 << 1)
 };
 
 // GameInit -- [re]initializes a new round of gameplay
@@ -731,18 +732,19 @@ static void GameInit(uint8_t initFlags)
 
     // Paddle position
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
-        Paddles[i].y = (ScreenHeight - HUDHeight - PaddleMaxH) / 2.f;
+        Paddles[i].x = PaddleXs[i];
+        if ( ! (initFlags & GAME_INIT_KEEP_PADDLE_POSITIONS)) {
+            Paddles[i].y = (ScreenHeight - HUDHeight - PaddleMaxH) / 2.f;
+        }
         Paddles[i].vy = 0.f;
         Paddles[i].cutTop = 0;
         Paddles[i].cutBottom = PaddleMaxH;
         Paddles[i].laserRechargeTicks = 0;
     }
-    
-    Paddles[0].x = PaddleXs[0];
+
     Paddles[0].ballBounceDirection = 1;
     Paddles[0].ballType = BallTypeBlue;
 
-    Paddles[1].x = PaddleXs[1];
     Paddles[1].ballBounceDirection = -1;
     Paddles[1].ballType = BallTypeRed;
 
@@ -869,7 +871,7 @@ static void GameUpdate()
     if (GameTicksToNextRound > 0) {
         --GameTicksToNextRound;
         if (GameTicksToNextRound == 0) {
-            GameInit(GAME_INIT_KEEP_SCORES);
+            GameInit(GAME_INIT_KEEP_SCORES | GAME_INIT_KEEP_PADDLE_POSITIONS);
         }
     }
     
