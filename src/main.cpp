@@ -609,7 +609,6 @@ static void PaddleHeal(uint8_t paddleIndex) {
     if (paddleIndex >= SDL_arraysize(Paddles)) {
         return;
     }
-    
     SDL_BlitSurface(Paddle::GetImageTemplate(paddleIndex), NULL, Paddle::GetImage(paddleIndex), NULL);
 }
 
