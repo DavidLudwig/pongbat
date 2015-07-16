@@ -449,7 +449,8 @@ static const int16_t HUDScoresYOffset = 5;
 static const float BallRadius = 10.f;
 static const float BallChopVelocityY = 2.0f;    // 'chop' ball's Y-velocity to this, on particular collisions
 enum BallType : uint8_t {
-    BallTypeNoPlayer = 0,
+    BallTypeInactive = 0,
+    BallTypeNoPlayer,
     BallTypeBlue,
     BallTypeRed
 };
@@ -666,6 +667,8 @@ static SDL_Rect ScoreZones[] = {
     { 0,                            0, ScoreZoneWidth, ScreenHeight - HUDHeight },
     { ScreenWidth - ScoreZoneWidth, 0, ScoreZoneWidth, ScreenHeight - HUDHeight }
 };
+static uint16_t GameTicksToNextRound = 0;
+static const uint16_t GameTicksToNextRoundDefault = 100;
 
 
 //
@@ -724,6 +727,7 @@ static void GameInit(uint8_t initFlags)
     if ( ! (initFlags & GAME_INIT_KEEP_SCORES)) {
         SDL_memset(&Scores, 0, sizeof(Scores));
     }
+    GameTicksToNextRound = 0;
 
     // Paddle position
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
@@ -861,6 +865,14 @@ static void GameUpdate()
     // Get pressed-state for all keyboard keys
     const Uint8 * keyState = SDL_GetKeyboardState(NULL);
     
+    // Re-init?
+    if (GameTicksToNextRound > 0) {
+        --GameTicksToNextRound;
+        if (GameTicksToNextRound == 0) {
+            GameInit(GAME_INIT_KEEP_SCORES);
+        }
+    }
+    
     // Laser-magnitude updates
     for (uint8_t i = 0; i < SDL_arraysize(Lasers); ++i) {
         if (Lasers[i].magnitude == 0.f) {
@@ -969,6 +981,10 @@ static void GameUpdate()
     
     // Ball updates
     for (uint8_t i = 0; i < BallCount; ++i) {
+        if (Balls[i].type == BallTypeInactive) {
+            continue;
+        }
+        
         // Move the ball
         Balls[i].cx += Balls[i].vx;
         Balls[i].cy += Balls[i].vy;
@@ -1020,9 +1036,10 @@ static void GameUpdate()
         Balls[i].GetRect(&ballRect);
         for (uint8_t j = 0; j < SDL_arraysize(ScoreZones); ++j) {
             if (SDL_HasIntersection(&ballRect, &ScoreZones[j])) {
-                // For now, just add score, then immediately reset.
+                // For now, just add score, then reset after a short interval
                 Scores[(j % 2) == 0]++;
-                GameInit(GAME_INIT_KEEP_SCORES);
+                Balls[i].type = BallTypeInactive;
+                GameTicksToNextRound = GameTicksToNextRoundDefault;
             }
         }
     }
@@ -1143,8 +1160,10 @@ static void GameDraw()
     
     // Balls
     for (uint8_t i = 0; i < BallCount; ++i) {
+        if (Balls[i].type == BallTypeInactive) {
+            continue;
+        }
         Balls[i].GetRect(&r);
-        
         SDL_Surface * ballImage = Balls[i].GetImage();
         if (ballImage) {
             SDL_BlitSurface(ballImage, NULL, Screen, &r);
