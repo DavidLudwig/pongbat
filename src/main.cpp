@@ -612,12 +612,14 @@ static void PaddleHeal(uint8_t paddleIndex) {
     if (paddleIndex >= SDL_arraysize(Paddles)) {
         return;
     }
+    Paddles[paddleIndex].cutTop = 0;
+    Paddles[paddleIndex].cutBottom = PaddleMaxH;
     SDL_BlitSurface(Paddle::GetImageTemplate(paddleIndex), NULL, Paddle::GetImage(paddleIndex), NULL);
 }
 
 
-//   
-//    #                                        
+//
+//    #
 //    #       ####   ####   ###   # ##    #### 
 //    #      #   #  ###    #####  ##     ###   
 //    #      #  ##    ###  #      #        ### 
@@ -716,9 +718,10 @@ static SDL_bool GamePreload()
 #pragma mark - Game Init
 
 enum : uint8_t {
-    GAME_INIT_DEFAULT               = 0,
-    GAME_INIT_KEEP_SCORES           = (1 << 0),
-    GAME_INIT_KEEP_PADDLE_POSITIONS = (1 << 1)
+    GAME_INIT_DEFAULT                   = 0,
+    GAME_INIT_KEEP_SCORES               = (1 << 0),
+    GAME_INIT_KEEP_PADDLE_POSITIONS     = (1 << 1),
+    GAME_INIT_ONLY_HEAL_DEAD_PADDLES    = (1 << 2)
 };
 
 // GameInit -- [re]initializes a new round of gameplay
@@ -737,8 +740,6 @@ static void GameInit(uint8_t initFlags)
             Paddles[i].y = (ScreenHeight - HUDHeight - PaddleMaxH) / 2.f;
         }
         Paddles[i].vy = 0.f;
-        Paddles[i].cutTop = 0;
-        Paddles[i].cutBottom = PaddleMaxH;
         Paddles[i].laserRechargeTicks = 0;
     }
 
@@ -749,8 +750,12 @@ static void GameInit(uint8_t initFlags)
     Paddles[1].ballType = BallTypeRed;
 
     // Paddle contents
-    for (uint8_t k = 0; k < SDL_arraysize(Paddles); ++k) {
-        PaddleHeal(k);
+    for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
+        if ((!(initFlags & GAME_INIT_ONLY_HEAL_DEAD_PADDLES)) ||
+            (Paddles[i].cutTop >= Paddles[i].cutBottom))        // is the paddle completely dead?
+        {
+            PaddleHeal(i);
+        }
     }
     
     // Paddle input keys
@@ -871,7 +876,7 @@ static void GameUpdate()
     if (GameTicksToNextRound > 0) {
         --GameTicksToNextRound;
         if (GameTicksToNextRound == 0) {
-            GameInit(GAME_INIT_KEEP_SCORES | GAME_INIT_KEEP_PADDLE_POSITIONS);
+            GameInit(GAME_INIT_KEEP_SCORES | GAME_INIT_KEEP_PADDLE_POSITIONS | GAME_INIT_ONLY_HEAL_DEAD_PADDLES);
         }
     }
     
