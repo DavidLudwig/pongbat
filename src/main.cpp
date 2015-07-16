@@ -581,6 +581,15 @@ struct Paddle {
         }
     }
     
+    // GetImageTemplate -- convert paddleIndex to an appropriate SDL_Surface, for a restored paddle
+    static SDL_Surface * GetImageTemplate(uint8_t paddleIndex) {
+        switch (paddleIndex) {
+            case 0:  return Images[ImageIDPaddleBlueTemplate];
+            case 1:  return Images[ImageIDPaddleRedTemplate];
+            default: return NULL;
+        }
+    }
+    
     // CalcEdge -- computes a new top, or bottom, for paddle; called as part of paddle-cutting algorithm
     static int16_t CalcEdge(SDL_Surface * paddleImage, int16_t ystart, int16_t yend, int16_t ystep) {
         int16_t y;
@@ -595,6 +604,14 @@ struct Paddle {
         return y;
     }
 } Paddles[2];
+
+static void PaddleHeal(uint8_t paddleIndex) {
+    if (paddleIndex >= SDL_arraysize(Paddles)) {
+        return;
+    }
+    
+    SDL_BlitSurface(Paddle::GetImageTemplate(paddleIndex), NULL, Paddle::GetImage(paddleIndex), NULL);
+}
 
 
 //   
@@ -693,11 +710,18 @@ static SDL_bool GamePreload()
 //                                                                  
 #pragma mark - Game Init
 
+enum : uint8_t {
+    GAME_INIT_DEFAULT       = 0,
+    GAME_INIT_KEEP_SCORES   = (1 << 0),
+};
+
 // GameInit -- [re]initializes a new round of gameplay
-static void GameInit()
+static void GameInit(uint8_t initFlags)
 {
     // Scoring
-    SDL_memset(&Scores, 0, sizeof(Scores));
+    if ( ! (initFlags & GAME_INIT_KEEP_SCORES)) {
+        SDL_memset(&Scores, 0, sizeof(Scores));
+    }
 
     // Paddle position
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
@@ -717,8 +741,9 @@ static void GameInit()
     Paddles[1].ballType = BallTypeRed;
 
     // Paddle contents
-    SDL_BlitSurface(Images[ImageIDPaddleBlueTemplate], NULL, Images[ImageIDPaddleBlue], NULL);
-    SDL_BlitSurface(Images[ImageIDPaddleRedTemplate],  NULL, Images[ImageIDPaddleRed],  NULL);
+    for (uint8_t k = 0; k < SDL_arraysize(Paddles); ++k) {
+        PaddleHeal(k);
+    }
     
     // Paddle input keys
     // TODO: set to SDL_SCANCODE_UNKNOWN for AI control?
@@ -758,7 +783,7 @@ static void GameEventHandler(const SDL_Event * event)
         case SDL_KEYDOWN: {
             switch (event->key.keysym.sym) {
                 case SDLK_r: {
-                    GameInit();
+                    GameInit(GAME_INIT_DEFAULT);
                 } break;
             }
         } break;
@@ -993,9 +1018,9 @@ static void GameUpdate()
         Balls[i].GetRect(&ballRect);
         for (uint8_t j = 0; j < SDL_arraysize(ScoreZones); ++j) {
             if (SDL_HasIntersection(&ballRect, &ScoreZones[j])) {
-                // For now, just add score, then immediately respawn the ball
+                // For now, just add score, then immediately reset.
                 Scores[(j % 2) == 0]++;
-                BallRespawn(i);
+                GameInit(GAME_INIT_KEEP_SCORES);
             }
         }
     }
@@ -1282,7 +1307,7 @@ int main(int argc, char * argv[])
     // Start a new round of gameplay
     // TODO: Call GameInit() more frequently, to restart game.
     // NOTE: 'R' debug key will invoke GameInit(), which will forcefully restart the game!
-    GameInit();
+    GameInit(GAME_INIT_DEFAULT);
 
     // Game loop
 #ifdef __EMSCRIPTEN__
