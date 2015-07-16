@@ -98,6 +98,7 @@ static ImageID ImageIDPaddleRed;
 static ImageID ImageIDPaddleBlueTemplate;
 static ImageID ImageIDPaddleRedTemplate;
 static ImageID ImageIDBackgroundTile;
+static ImageID ImageIDBackgroundPaddleBar;
 
 // ImageIDAlloc -- allocate a new ImageID
 ImageID ImageIDAlloc()
@@ -532,6 +533,7 @@ void BallRespawn(uint8_t ballIndex)
 #pragma mark - Paddles
 static const float PaddleVStep = 0.1f;          // adjust moving paddle(s) Y-velocity by this much, per game-tick
 static const int16_t PaddleMaxH = 150;
+static const int16_t PaddleXs[] = { 16, ScreenWidth - 32 };
 static const uint16_t PaddleWidth = 16;
 static const float PaddleToBallFriction = 1.f;  // how much should a paddle's Y-velocity be applied to colliding ball(s)?
 static const uint16_t PaddleDefaultLaserRechargeTicks = 450;    // default number of game-ticks (10 ms per tick) to wait for laser rechaarge
@@ -688,7 +690,8 @@ static SDL_bool GamePreload()
         ImageCreate(&ImageIDPaddleRed, PaddleWidth, PaddleMaxH) &&
         ImageLoad(&ImageIDPaddleBlueTemplate, "Data/Images/PaddleBlue.png") &&
         ImageLoad(&ImageIDPaddleRedTemplate, "Data/Images/PaddleRed.png") &&
-        ImageLoad(&ImageIDBackgroundTile, "Data/Images/BackgroundTile.png")
+        ImageLoad(&ImageIDBackgroundTile, "Data/Images/BackgroundTile.png") &&
+        ImageLoad(&ImageIDBackgroundPaddleBar, "Data/Images/BackgroundPaddleBar.png")
     ))
     {
         return SDL_FALSE;
@@ -731,11 +734,11 @@ static void GameInit(uint8_t initFlags)
         Paddles[i].laserRechargeTicks = 0;
     }
     
-    Paddles[0].x = 16;
+    Paddles[0].x = PaddleXs[0];
     Paddles[0].ballBounceDirection = 1;
     Paddles[0].ballType = BallTypeBlue;
 
-    Paddles[1].x = ScreenWidth - 32;
+    Paddles[1].x = PaddleXs[1];
     Paddles[1].ballBounceDirection = -1;
     Paddles[1].ballType = BallTypeRed;
 
@@ -1042,7 +1045,7 @@ static void GameDraw()
 {
     SDL_Rect r, r2;
     
-    // Background
+    // Background, Main
     RectSet(&r, 0, 0, ScreenWidth, ScreenHeight - HUDHeight);
 //    SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xaa, 0xaa, 0xaa));
     SDL_SetClipRect(Screen, &r);
@@ -1055,6 +1058,19 @@ static void GameDraw()
             SDL_BlitSurface(Images[ImageIDBackgroundTile], NULL, Screen, &r2);
         }
     }
+
+    // Background, Paddle-Bars
+    r.w = Images[ImageIDBackgroundPaddleBar]->w;
+    r.h = Images[ImageIDBackgroundPaddleBar]->h;
+    for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
+        r.x = PaddleXs[i] + (PaddleWidth / 2) - (r.w / 2);
+        for (int16_t y = 0; y < (ScreenHeight - HUDHeight); y += r.h) {
+            r.y = y;
+            SDL_BlitSurface(Images[ImageIDBackgroundPaddleBar], NULL, Screen, &r);
+        }
+    }
+
+    // End of Background drawing
     SDL_SetClipRect(Screen, NULL);
     
     // HUD
