@@ -720,7 +720,7 @@ static SDL_bool GamePreload()
 enum : uint8_t {
     GAME_INIT_DEFAULT                   = 0,
     GAME_INIT_KEEP_SCORES               = (1 << 0),
-    GAME_INIT_KEEP_PADDLE_POSITIONS     = (1 << 1),
+    GAME_INIT_KEEP_PADDLE_STATE         = (1 << 1),
     GAME_INIT_ONLY_HEAL_DEAD_PADDLES    = (1 << 2)
 };
 
@@ -736,11 +736,11 @@ static void GameInit(uint8_t initFlags)
     // Paddle position
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
         Paddles[i].x = PaddleXs[i];
-        if ( ! (initFlags & GAME_INIT_KEEP_PADDLE_POSITIONS)) {
+        if ( ! (initFlags & GAME_INIT_KEEP_PADDLE_STATE)) {
             Paddles[i].y = (ScreenHeight - HUDHeight - PaddleMaxH) / 2.f;
+            Paddles[i].vy = 0.f;
+            Paddles[i].laserRechargeTicks = 0;
         }
-        Paddles[i].vy = 0.f;
-        Paddles[i].laserRechargeTicks = 0;
     }
 
     Paddles[0].ballBounceDirection = 1;
@@ -876,7 +876,7 @@ static void GameUpdate()
     if (GameTicksToNextRound > 0) {
         --GameTicksToNextRound;
         if (GameTicksToNextRound == 0) {
-            GameInit(GAME_INIT_KEEP_SCORES | GAME_INIT_KEEP_PADDLE_POSITIONS | GAME_INIT_ONLY_HEAL_DEAD_PADDLES);
+            GameInit(GAME_INIT_KEEP_SCORES | GAME_INIT_KEEP_PADDLE_STATE | GAME_INIT_ONLY_HEAL_DEAD_PADDLES);
         }
     }
     
