@@ -239,7 +239,7 @@ typedef int8_t FontID;                          // valid fonts are indexed at 0 
 static const uint16_t FontBitmapWidth = 512;    // default size for baked font character pixels
 static const uint16_t FontBitmapHeight = 512;
 static const unsigned char FontFirstChar = 32;  // first_char (' ')
-static const unsigned char FontCharCount = 96;  // ... to 'DEL' (32 to 127)
+static const unsigned char FontCharCount = 95;  // ... to '~' (32 to 126)
 
 struct FontChar
 {
@@ -263,7 +263,7 @@ union Font {
         int ascent;
         int descent;
         int lineGap;
-        FontChar chars[96];
+        FontChar chars[FontCharCount];
         unsigned char bitmap[FontBitmapWidth * FontBitmapHeight];    // 8-bit font alpha data, alfo i
     } baked;
 };
