@@ -66,23 +66,11 @@ static SDL_Surface * Screen = 0;
 static const uint16_t ScreenWidth = 640;
 static const uint16_t ScreenHeight = 480;
 
-// Setup endian-specific constants.
-//
-// BUG: These likely fail on Emscripten, when running on a big-endian machine.
-//   Consider assigning them dynamically, in this case.
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-static const uint32_t ImageRMask = 0xff000000;
-static const uint32_t ImageGMask = 0x00ff0000;
-static const uint32_t ImageBMask = 0x0000ff00;
-static const uint32_t ImageAMask = 0x000000ff;
-static const uint8_t  ImageAShift = 0;          // Number of bits to right-shift to get alpha-channel
-#else
+// Image format details -- all images are 32-bit
 static const uint32_t ImageRMask = 0x000000ff;
 static const uint32_t ImageGMask = 0x0000ff00;
 static const uint32_t ImageBMask = 0x00ff0000;
 static const uint32_t ImageAMask = 0xff000000;
-static const uint8_t  ImageAShift = 24;         // Number of bits to right-shift to get alpha-channel
-#endif
 
 // Images are accessed via ID numbers
 typedef uint8_t ImageID;
@@ -599,7 +587,7 @@ struct Paddle {
         for (y = ystart; y != (yend + ystep); y += ystep) {
             for (int16_t x = 0; x < PaddleWidth; ++x) {
                 uint32_t a = ImageGetAlphaUnshifted(paddleImage, x, y);
-                if ((a >> ImageAShift) == 0xff) {
+                if ((a >> paddleImage->format->Ashift) == 0xff) {
                     return y;
                 }
             }
@@ -842,10 +830,10 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
             const uint32_t palphachannel = ImageGetAlphaUnshifted(paddleImage, px, py);
             
             // Make sure the ball and the paddle are opaque (at the current pixel)
-            if (balphachannel &&                            // A simple 'is non-zero' check will work fine for ball-alpha.
-                ((palphachannel >> ImageAShift) == 0xff))   // A fancier, 'is not fully-opaque' check is used for paddles,
-                                                            // as cut paddle parts may be translucent, when debugging
-                                                            // paddle-slicing.
+            if (balphachannel &&                                            // A simple 'is non-zero' check will work fine for ball-alpha.
+                ((palphachannel >> paddleImage->format->Ashift) == 0xff))   // A fancier, 'is not fully-opaque' check is used for paddles,
+                                                                            // as cut paddle parts may be translucent, when debugging
+                                                                            // paddle-slicing.
             {
                 return SDL_TRUE;
             }
