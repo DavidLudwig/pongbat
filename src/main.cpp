@@ -348,7 +348,7 @@ SDL_bool FontPreloadAll()
 // TextDrawChar-- renders a single character onto the global 'Screen'
 void TextDrawChar(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t * scrx, int16_t * scry, unsigned char ch)
 {
-    if (ch < FontFirstChar || ch > (FontFirstChar + FontCharCount)) {
+    if (ch < FontFirstChar || ch >= (FontFirstChar + FontCharCount)) {
         return;
     } else if (fontID < 0 || fontID >= SDL_arraysize(Fonts)) {
         return;
@@ -404,6 +404,7 @@ void TextDraw(FontID fontID, uint8_t r, uint8_t g, uint8_t b, int16_t x, int16_t
         TextDrawChar(fontID, r, g, b, &curx, &cury, *currentChar);
         ++currentChar;
     }
+    va_end(ap);
 }
 
 
