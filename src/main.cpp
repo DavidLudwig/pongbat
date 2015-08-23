@@ -191,7 +191,7 @@ float MathRandRangeF(float a, float b)
 {
     float max = SDL_max(a, b);
     float min = SDL_min(a, b);
-    return min + (((float)(rand() % RAND_MAX) / (float)RAND_MAX) * (max - min));
+    return min + ((((float)rand()) / ((float)RAND_MAX)) * (max - min));
 }
 
 // MathRandRangeF -- get random int in inclusive-range; granularity limited to RAND_MAX
