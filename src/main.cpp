@@ -87,6 +87,7 @@ static ImageID ImageIDPaddleBlueTemplate;
 static ImageID ImageIDPaddleRedTemplate;
 static ImageID ImageIDBackgroundTile;
 static ImageID ImageIDBackgroundPaddleBar;
+static ImageID ImageIDPowerupPlain;
 
 // ImageIDAlloc -- allocate a new ImageID
 ImageID ImageIDAlloc()
@@ -799,7 +800,8 @@ static SDL_bool GamePreload()
         ImageLoad(&ImageIDPaddleBlueTemplate, "Data/Images/PaddleBlue.png") &&
         ImageLoad(&ImageIDPaddleRedTemplate, "Data/Images/PaddleRed.png") &&
         ImageLoad(&ImageIDBackgroundTile, "Data/Images/BackgroundTile.png") &&
-        ImageLoad(&ImageIDBackgroundPaddleBar, "Data/Images/BackgroundPaddleBar.png")
+        ImageLoad(&ImageIDBackgroundPaddleBar, "Data/Images/BackgroundPaddleBar.png") &&
+        ImageLoad(&ImageIDPowerupPlain, "Data/Images/PowerupPlain.png")
     ))
     {
         return SDL_FALSE;
@@ -1381,7 +1383,8 @@ static void GameDraw()
             case PowerupType_Active: {
                 r.x = Powerups[i].x;
                 r.y = Powerups[i].y;
-                SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xcc, 0xcc, 0xcc));
+//                SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xcc, 0xcc, 0xcc));
+                SDL_BlitSurface(Images[ImageIDPowerupPlain], NULL, Screen, &r);
 //                TextDraw(FontIDHUDScores, 0, 0, 0, r.x + 4, r.y + 4, "%d", i);
             } break;
         }
