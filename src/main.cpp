@@ -32,18 +32,18 @@
 
 
 //   
-//    ####          #                            ###           #       #                        
-//    #   #   ###   ####   #   #   ####         #   #  ####   ####           ###   # ##    #### 
-//    #   #  #####  #   #  #   #  #   #         #   #  #   #   #       #    #   #  ##  #  ###   
-//    #   #  #      #   #  #  ##   ####         #   #  #   #   #       #    #   #  #   #    ### 
-//    ####    ###   ####    ## #      #          ###   ####     ##     #     ###   #   #  ####  
-//                                 ###                 #                                        
+//    ####          #                   
+//    #   #   ###   ####   #   #   #### 
+//    #   #  #####  #   #  #   #  #   # 
+//    #   #  #      #   #  #  ##   #### 
+//    ####    ###   ####    ## #      # 
+//                                 ###
 //
-#pragma mark - Debug Options
+#pragma mark - Debug Options + Variables
 //#define DEBUG_PADDLE_DRAWING 1                  // Uncomment to draw unseen paddle parts
 //#define DEBUG_KEYS 1                            // Uncomment to enable debug keys (via keyboard)
-//#define DEBUG_SCORE_ZONE_DRAWING 1                // Uncomment to draw score-zones
-
+//#define DEBUG_SCORE_ZONE_DRAWING 1              // Uncomment to draw score-zones
+uint32_t DebugGameTickCount = 0;                    // Used for debugging various things
 
 //
 //    ###                                     
@@ -509,6 +509,10 @@ void BallRespawn(uint8_t ballIndex)
     Balls[ballIndex].cy = (ScreenHeight - HUDHeight) / 2.f;
     Balls[ballIndex].vx = MathRandRangeF(0.5f, 3.0f) * (MathRandRangeI(0,1) ? 1.f : -1.f);
     Balls[ballIndex].vy = MathRandRangeF(0.5f, 2.0f) * (MathRandRangeI(0,1) ? 1.f : -1.f);
+//    Balls[ballIndex].vx = 1.6f;       // Ball/Powerup collision testing, Y-axis
+//    Balls[ballIndex].vy = 0.32f;
+//    Balls[ballIndex].vx = 0.32f;        // Ball/Powerup collision testing, X-axis
+//    Balls[ballIndex].vy = 1.6f;
     Balls[ballIndex].type = BallTypeNoPlayer;
 }
 
@@ -523,8 +527,9 @@ void BallRespawn(uint8_t ballIndex)
 #pragma mark - Paddles
 static const float PaddleVStep = 0.1f;          // adjust moving paddle(s) Y-velocity by this much, per game-tick
 static const int16_t PaddleMaxH = 150;
-static const int16_t PaddleXs[] = { 16, ScreenWidth - 32 };
+static const int8_t PaddleMargin = 16;          // diff from screen edge, to paddle edge
 static const uint16_t PaddleWidth = 16;
+static const int16_t PaddleXs[] = { PaddleMargin, ScreenWidth - PaddleMargin - PaddleWidth };
 static const float PaddleToBallFriction = 1.f;  // how much should a paddle's Y-velocity be applied to colliding ball(s)?
 static const uint16_t PaddleDefaultLaserRechargeTicks = 450;    // default number of game-ticks (10 ms per tick) to wait for laser rechaarge
 struct Paddle {
@@ -605,6 +610,115 @@ static void PaddleHeal(uint8_t paddleIndex) {
     Paddles[paddleIndex].cutBottom = PaddleMaxH;
     SDL_BlitSurface(Paddle::GetImageTemplate(paddleIndex), NULL, Paddle::GetImage(paddleIndex), NULL);
 }
+
+
+//
+//    ####                                                   
+//    #   #   ###   #   #   ###   # ##   #   #  ####    #### 
+//    ####   #   #  # # #  #####  ##     #   #  #   #  ###   
+//    #      #   #  # # #  #      #      #  ##  #   #    ### 
+//    #       ###    # #    ###   #       ## #  ####   ####  
+//                                              #            
+//
+#pragma mark - Powerups
+
+typedef int8_t PowerupID;
+static const uint8_t PowerupSize = 32;
+static const uint8_t PowerupMargin = 8;     // Prevent other powerups from coming within this many pixels near to it
+static const uint16_t PowerupSpawnRangeX[] = {PaddleMargin + PaddleWidth + 50,  ScreenWidth - PowerupSize - PaddleMargin - PaddleWidth - 50};
+static const uint16_t PowerupSpawnRangeY[] = {50,                               ScreenHeight - HUDHeight - PowerupSize - 50};
+static const uint16_t PowerupMinLifetime = 500;
+static const uint16_t PowerupMaxLifetime = 2000;
+
+enum : uint8_t {
+    PowerupType_Inactive = 0,
+    PowerupType_Active
+};
+
+struct Powerup {
+    uint16_t x;
+    uint16_t y;
+    int16_t gameTicksLeft;
+    uint8_t type;
+    
+    void GetRect(SDL_Rect * r) {
+        r->x = x;
+        r->y = y;
+        r->w = r->h = PowerupSize;
+    }
+} Powerups[8];
+
+static void PowerupRespawn(PowerupID id)
+{
+    if (id < 0 || id >= SDL_arraysize(Powerups)) {
+        return;
+    }
+    
+    // Try to find an unoccupied spot for the powerup.  If one can't be found
+    // after several tries, give up.
+    SDL_Rect selfRect, otherRect, ballSpawnRect;
+    selfRect.w = selfRect.h = PowerupSize;
+    otherRect.w = otherRect.h = PowerupSize + (PowerupMargin * 2);
+
+    // Define some space where balls in, without them immediately
+    // colliding with powerups.
+    ballSpawnRect.w = ballSpawnRect.h = ((int)BallRadius) * 8;
+    ballSpawnRect.x = (ScreenWidth / 2) - (ballSpawnRect.w / 2);
+    ballSpawnRect.y = ((ScreenHeight - HUDHeight) / 2) - (ballSpawnRect.h / 2);
+
+    uint8_t attemptsLeft = 32;
+    while (1) {
+        if (--attemptsLeft == 0) {
+            return;
+        }
+        
+        Powerups[id].x = selfRect.x = MathRandRangeI(PowerupSpawnRangeX[0], PowerupSpawnRangeX[1]);
+        Powerups[id].y = selfRect.y = MathRandRangeI(PowerupSpawnRangeY[0], PowerupSpawnRangeY[1]);
+//        Powerups[id].x = selfRect.x = ((PowerupSpawnRangeX[1] - PowerupSpawnRangeX[0]) / 2) + PowerupSpawnRangeX[0] + 100;
+//        Powerups[id].y = selfRect.y = ((PowerupSpawnRangeY[1] - PowerupSpawnRangeY[0]) / 2) + PowerupSpawnRangeY[0] + 40;
+//        Powerups[id].x = selfRect.x = ((PowerupSpawnRangeX[1] - PowerupSpawnRangeX[0]) / 2) + PowerupSpawnRangeX[0] + 40;
+//        Powerups[id].y = selfRect.y = ((PowerupSpawnRangeY[1] - PowerupSpawnRangeY[0]) / 2) + PowerupSpawnRangeY[0] + 100;
+        
+        if (SDL_HasIntersection(&selfRect, &ballSpawnRect)) {
+            // The Powerup is in the ball-spawning area.  Pick another spot, if possible!
+            continue;
+        }
+        
+        PowerupID collidingID;
+        for (collidingID = 0; collidingID < SDL_arraysize(Powerups); ++collidingID) {
+            if (Powerups[collidingID].type == PowerupType_Inactive) {
+                continue;   // Ignore inactive Powerup slots (implicitly-including the one at [id])!
+            }
+            otherRect.x = Powerups[collidingID].x - PowerupMargin;
+            otherRect.y = Powerups[collidingID].y - PowerupMargin;
+            if (SDL_HasIntersection(&selfRect, &otherRect)) {
+                // A collision was detected!
+                break;
+            }
+        }
+        if (collidingID >= SDL_arraysize(Powerups)) {
+            // A collision (with another Powerup) was *NOT* detected!
+            break;
+        }
+    }
+  
+    // Mark the powerup as active
+    Powerups[id].type = PowerupType_Active;
+    
+    // Give the powerup a life-time
+    Powerups[id].gameTicksLeft = MathRandRangeI(PowerupMinLifetime, PowerupMaxLifetime);
+}
+
+static void PowerupDeactivate(PowerupID id)
+{
+    if (id < 0 || id >= SDL_arraysize(Powerups)) {
+        return;
+    }
+
+    Powerups[id].type = PowerupType_Inactive;
+    Powerups[id].gameTicksLeft = MathRandRangeI(PowerupMinLifetime, PowerupMaxLifetime);
+}
+
 
 
 //
@@ -710,7 +824,9 @@ enum : uint8_t {
     GAME_INIT_DEFAULT                   = 0,
     GAME_INIT_KEEP_SCORES               = (1 << 0),
     GAME_INIT_KEEP_PADDLE_STATE         = (1 << 1),
-    GAME_INIT_ONLY_HEAL_DEAD_PADDLES    = (1 << 2)
+    GAME_INIT_ONLY_HEAL_DEAD_PADDLES    = (1 << 2),
+    GAME_INIT_KEEP_POWERUPS             = (1 << 3),
+    GAME_INIT_NEXT_ROUND                = 0x0F
 };
 
 // GameInit -- [re]initializes a new round of gameplay
@@ -759,6 +875,19 @@ static void GameInit(uint8_t initFlags)
     // Reset lasers
     for (uint8_t i = 0; i < SDL_arraysize(Lasers); ++i) {
         Lasers[i].magnitude = 0.f;
+    }
+
+    // Reset powerups
+    if ( ! (initFlags & GAME_INIT_KEEP_POWERUPS)) {
+        SDL_memset(Powerups, 0, sizeof(Powerups));
+        uint8_t numPowerupsToSpawn = MathRandRangeI(0, 4);
+        for (uint8_t i = 0; i < SDL_arraysize(Powerups); ++i) {
+            if (i < numPowerupsToSpawn) {
+                PowerupRespawn(i);
+            } else {
+                PowerupDeactivate(i);
+            }
+        }
     }
     
     // Spawn a ball
@@ -845,10 +974,43 @@ static SDL_bool GameIsBallPaddleCollision(uint8_t ballIndex, uint8_t paddleIndex
     return SDL_FALSE;
 }
 
+static SDL_bool GameIsBallPowerupCollision(uint8_t ballIndex, uint8_t powerupIndex, SDL_Rect * ballPowerupIntersection)
+{
+    // First, check to see if the ball + paddle's rects match up
+    SDL_Rect ballRect, powerupRect, intersection;
+    Balls[ballIndex].GetRect(&ballRect);
+    Powerups[powerupIndex].GetRect(&powerupRect);
+    if ( ! SDL_IntersectRect(&ballRect, &powerupRect, &intersection)) {
+        // The ball + powerup definitely don't collide!
+        return SDL_FALSE;
+    }
 
-//   
-//     ####                              #   #             #          #           
-//    #       ####  ## #    ###          #   #  ####    ####   ####  ####    ###  
+    //return SDL_TRUE;
+    
+    SDL_Surface * ballImage = Balls[ballIndex].GetImage();
+    for (uint16_t y = intersection.y; y < (intersection.y + intersection.h); ++y) {
+        for (uint16_t x = intersection.x; x < (intersection.x + intersection.w); ++x) {
+            const uint16_t bx = x - ballRect.x;
+            const uint16_t by = y - ballRect.y;
+            const uint32_t balphachannel = ImageGetAlphaUnshifted(ballImage, bx, by);
+            
+            // Make sure the ball is opaque, at the current pixel
+            if (balphachannel)  // A simple 'is non-zero' check will work fine for ball-alpha.
+            {
+                *ballPowerupIntersection = intersection;
+                return SDL_TRUE;
+            }
+        }
+    }
+    
+    // Nope, no collision
+    return SDL_FALSE;
+}
+
+
+//
+//     ####                              #   #             #          #
+//    #       ####  ## #    ###          #   #  ####    ####   ####  ####    ###
 //    #  ##  #   #  # # #  #####         #   #  #   #  #   #  #   #   #     ##### 
 //    #   #  #  ##  # # #  #             #   #  #   #  #   #  #  ##   #     #     
 //     ####   ## #  #   #   ###           ###   ####    ####   ## #    ##    ###  
@@ -865,7 +1027,7 @@ static void GameUpdate()
     if (GameTicksToNextRound > 0) {
         --GameTicksToNextRound;
         if (GameTicksToNextRound == 0) {
-            GameInit(GAME_INIT_KEEP_SCORES | GAME_INIT_KEEP_PADDLE_STATE | GAME_INIT_ONLY_HEAL_DEAD_PADDLES);
+            GameInit(GAME_INIT_NEXT_ROUND);
         }
     }
     
@@ -975,6 +1137,21 @@ static void GameUpdate()
         }
     }
     
+    // Powerup updates
+    for (uint8_t i = 0; i < SDL_arraysize(Powerups); ++i) {
+        --Powerups[i].gameTicksLeft;
+        if (Powerups[i].gameTicksLeft <= 0) {
+            switch (Powerups[i].type) {
+                case PowerupType_Active: {
+                    PowerupDeactivate(i);
+                } break;
+                case PowerupType_Inactive: {
+                    PowerupRespawn(i);
+                } break;
+            }
+        }
+    }
+    
     // Ball updates
     for (uint8_t i = 0; i < BallCount; ++i) {
         if (Balls[i].type == BallTypeInactive) {
@@ -1023,6 +1200,54 @@ static void GameUpdate()
 //                    SDL_Log("speed, paddle: %f", Balls[i].Speed());
 //                    SDL_Log("vy, paddle: %f", Balls[i].vy);
                     Balls[i].type = Paddles[j].ballType;
+                }
+            }
+        }
+        
+        // Ball/powerup collisions
+        SDL_Rect ballPowerupIntersect;
+        for (uint8_t j = 0; j < SDL_arraysize(Powerups); ++j) {
+            if (Powerups[j].type != PowerupType_Inactive) {
+//                SDL_Rect ballRect;
+//                Balls[i].GetRect(&ballRect);
+                SDL_Rect powerupRect;
+                Powerups[j].GetRect(&powerupRect);
+                if (GameIsBallPowerupCollision(i, j, &ballPowerupIntersect)) {
+//                    SDL_Log("BALL/POWERUP INTERSECT: tick:%d, b:{%d,%d,%d,%d}, p:{%d,%d,%d,%d}, i:{%d,%d,%d,%d}, b.v:{%f,%f}\n",
+//                            DebugGameTickCount,
+//                            ballRect.x, ballRect.y, ballRect.w, ballRect.h,
+//                            powerupRect.x, powerupRect.y, powerupRect.w, powerupRect.h,
+//                            ballPowerupIntersect.x, ballPowerupIntersect.y, ballPowerupIntersect.w, ballPowerupIntersect.h,
+//                            Balls[i].vx, Balls[i].vy);
+//                    SDL_Log("BALL/POWERUP INTERSECT: tick:%d, i:{%d,%d,%d,%d}, b.v:{%f,%f}\n",
+//                            DebugGameTickCount,
+//                            ballPowerupIntersect.x, ballPowerupIntersect.y, ballPowerupIntersect.w, ballPowerupIntersect.h,
+//                            Balls[i].vx, Balls[i].vy);
+
+                    //
+                    // There -is- a collision between a ball and a powerup.  Now,
+                    // see if there should be a response, by:
+                    //   - 1st, seeing if the ball should bounce along a particular axis.
+                    //     This is accomplished by looking at the sizes of the collision's intersection-rect.
+                    //   - 2nd, preventing a collision-response from occurring multiple
+                    //     times, for a single collision.  This is accomplished by looking
+                    //     at which direction the ball is heading in, and where the collision's
+                    //     intersection-rect sits inside the powerup's rect.
+                    //
+                    if (ballPowerupIntersect.w >= ballPowerupIntersect.h) {
+                        if ((Balls[i].vy > 0 && ballPowerupIntersect.y == powerupRect.y) ||
+                            (Balls[i].vy < 0 && (ballPowerupIntersect.y + ballPowerupIntersect.h) == (powerupRect.y + powerupRect.h)))
+                        {
+                            Balls[i].vy *= -1.f;
+                        }
+                    }
+                    if (ballPowerupIntersect.w <= ballPowerupIntersect.h) {
+                        if ((Balls[i].vx > 0 && ballPowerupIntersect.x == powerupRect.x) ||
+                            (Balls[i].vx < 0 && (ballPowerupIntersect.x + ballPowerupIntersect.w) == (powerupRect.x + powerupRect.w)))
+                        {
+                            Balls[i].vx *= -1.f;
+                        }
+                    }
                 }
             }
         }
@@ -1146,6 +1371,21 @@ static void GameDraw()
         Paddles[i].GetRect(&r);
         SDL_BlitSurface(Paddle::GetImage(i), NULL, Screen, &r);
     }
+    
+    // Powerups
+    r.w = r.h = PowerupSize;
+    for (uint8_t i = 0; i < SDL_arraysize(Powerups); ++i) {
+        switch (Powerups[i].type) {
+            case PowerupType_Inactive:
+                continue;
+            case PowerupType_Active: {
+                r.x = Powerups[i].x;
+                r.y = Powerups[i].y;
+                SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xcc, 0xcc, 0xcc));
+//                TextDraw(FontIDHUDScores, 0, 0, 0, r.x + 4, r.y + 4, "%d", i);
+            } break;
+        }
+    }
 
     // Lasers
     for (uint8_t i = 0; i < SDL_arraysize(Lasers); ++i) {
@@ -1225,6 +1465,8 @@ static uint8_t AppTexturesReload()
 // AppUpdate -- called frequently, typically many times per second, often at monitor's refresh rate
 static void AppUpdate()
 {
+    DebugGameTickCount++;
+    
     // Make note of the app's current time
     uint32_t tick = SDL_GetTicks();
     
