@@ -1087,13 +1087,15 @@ static void GameUpdate()
         }
         
         // Fire lasers
-        if (Lasers[i].magnitude == 0.f) {
-            if (Paddles[i].laserRechargeTicks == 0) {
-                if (keyState[Paddles[i].keyLaser]) {
-                    Lasers[i].magnitude = LaserInitialMagnitude;
-                    Lasers[i].cy = ((float)(Paddles[i].cutBottom - Paddles[i].cutTop) / 2.f) + (float)Paddles[i].cutTop + Paddles[i].Top();
-                    Lasers[i].gameTicksUntilCut = 0;
-                    Paddles[i].laserRechargeTicks = PaddleDefaultLaserRechargeTicks;
+        if (Lasers[i].magnitude == 0.f) {                           // is a laser not on-screen?
+            if (Paddles[i].laserRechargeTicks == 0) {               // is the laser charged?
+                if (Paddles[i].cutTop < Paddles[i].cutBottom) {     // is at least some of the paddle still alive?
+                    if (keyState[Paddles[i].keyLaser]) {            // is the paddle-firing key pressed?
+                        Lasers[i].magnitude = LaserInitialMagnitude;
+                        Lasers[i].cy = ((float)(Paddles[i].cutBottom - Paddles[i].cutTop) / 2.f) + (float)Paddles[i].cutTop + Paddles[i].Top();
+                        Lasers[i].gameTicksUntilCut = 0;
+                        Paddles[i].laserRechargeTicks = PaddleDefaultLaserRechargeTicks;
+                    }
                 }
             }
         }
