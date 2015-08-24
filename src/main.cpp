@@ -1313,51 +1313,6 @@ static void GameDraw()
     // End of Background drawing
     SDL_SetClipRect(Screen, NULL);
     
-    // HUD
-    RectSet(&r, 0, ScreenHeight - HUDHeight, ScreenWidth, HUDHeight);
-    SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xdd, 0xdd, 0xdd));
-    
-    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[0], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: %d", Scores[0]);
-    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[1], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: %d", Scores[1]);
-
-    // HUD, Laser-recharge(s)
-    for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
-//        uint16_t ticks = PaddleDefaultLaserRechargeTicks / 2;     // uncomment to debug recharge-bar appearance
-        uint16_t ticks = Paddles[i].laserRechargeTicks;
-        if (ticks > 0) {
-            // Set starting values:
-            r.y = ScreenHeight - HUDHeight + ((HUDHeight - HUDLaserRechargeHeight) / 2);
-            r.w = HUDLaserRechargeWidth;
-            r.h = HUDLaserRechargeHeight;
-            
-            // Set paddle-specific values:
-            uint32_t barColor;
-            switch (i) {
-                case 0:
-                    r.x = HUDLaserRechargeXOffset;
-                    barColor = SDL_MapRGB(Screen->format, 0x00, 0x00, 0xff);
-                    break;
-                case 1:
-                    r.x = ScreenWidth - r.w - HUDLaserRechargeXOffset;
-                    barColor = SDL_MapRGB(Screen->format, 0xff, 0x00, 0x00);
-                    break;
-                default:
-                    continue;
-            }
-            
-            // Draw recharge background:
-            SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0x00, 0x00, 0x00));
-
-            // Draw recharge value, in a smaller box:
-            r.x++;
-            r.y++;
-            r.w -= 2;
-            r.h -= 2;
-            r.w = MathRound((float)r.w * ((float)ticks / (float)PaddleDefaultLaserRechargeTicks));
-            SDL_FillRect(Screen, &r, barColor);
-        }
-    }
-    
     // Paddles
     for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
 #if DEBUG_PADDLE_DRAWING
@@ -1417,6 +1372,51 @@ static void GameDraw()
         SDL_FillRect(Screen, &ScoreZones[i], SDL_MapRGB(Screen->format, 0x00, 0xff, 0x00));
     }
 #endif
+    
+    // HUD
+    RectSet(&r, 0, ScreenHeight - HUDHeight, ScreenWidth, HUDHeight);
+    SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xdd, 0xdd, 0xdd));
+    
+    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[0], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: %d", Scores[0]);
+    TextDraw(FontIDHUDScores, 0x00, 0x00, 0x00, HUDScoresXOffsets[1], (ScreenHeight - HUDHeight + HUDScoresYOffset), "Score: %d", Scores[1]);
+
+    // HUD, Laser-recharge(s)
+    for (uint8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
+//        uint16_t ticks = PaddleDefaultLaserRechargeTicks / 2;     // uncomment to debug recharge-bar appearance
+        uint16_t ticks = Paddles[i].laserRechargeTicks;
+        if (ticks > 0) {
+            // Set starting values:
+            r.y = ScreenHeight - HUDHeight + ((HUDHeight - HUDLaserRechargeHeight) / 2);
+            r.w = HUDLaserRechargeWidth;
+            r.h = HUDLaserRechargeHeight;
+            
+            // Set paddle-specific values:
+            uint32_t barColor;
+            switch (i) {
+                case 0:
+                    r.x = HUDLaserRechargeXOffset;
+                    barColor = SDL_MapRGB(Screen->format, 0x00, 0x00, 0xff);
+                    break;
+                case 1:
+                    r.x = ScreenWidth - r.w - HUDLaserRechargeXOffset;
+                    barColor = SDL_MapRGB(Screen->format, 0xff, 0x00, 0x00);
+                    break;
+                default:
+                    continue;
+            }
+            
+            // Draw recharge background:
+            SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0x00, 0x00, 0x00));
+
+            // Draw recharge value, in a smaller box:
+            r.x++;
+            r.y++;
+            r.w -= 2;
+            r.h -= 2;
+            r.w = MathRound((float)r.w * ((float)ticks / (float)PaddleDefaultLaserRechargeTicks));
+            SDL_FillRect(Screen, &r, barColor);
+        }
+    }
 }
 
 
