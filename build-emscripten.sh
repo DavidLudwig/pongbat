@@ -58,6 +58,7 @@ emcc src/main.cpp -s USE_SDL=2 -O3 -std=c++11 \
 	--preload-file "Data/Images/BackgroundTile.png" \
 	--preload-file "Data/Images/BackgroundPaddleBar.png" \
 	--preload-file "Data/Images/PowerupPlain.png" \
+	--preload-file "Data/Images/PowerupHealth.png" \
 	|| die "Compile failed"
 
 # Install

@@ -88,6 +88,7 @@ static ImageID ImageIDPaddleRedTemplate;
 static ImageID ImageIDBackgroundTile;
 static ImageID ImageIDBackgroundPaddleBar;
 static ImageID ImageIDPowerupPlain;
+static ImageID ImageIDPowerupHealth;
 
 // ImageIDAlloc -- allocate a new ImageID
 ImageID ImageIDAlloc()
@@ -612,6 +613,15 @@ static void PaddleHeal(uint8_t paddleIndex) {
     SDL_BlitSurface(Paddle::GetImageTemplate(paddleIndex), NULL, Paddle::GetImage(paddleIndex), NULL);
 }
 
+static int8_t PaddleIDForBallType(BallType ballType) {
+    for (int8_t i = 0; i < SDL_arraysize(Paddles); ++i) {
+        if (Paddles[i].ballType == ballType) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 
 //
 //    ####                                                   
@@ -633,8 +643,19 @@ static const uint16_t PowerupMaxLifetime = 2000;
 
 enum : uint8_t {
     PowerupType_Inactive = 0,
-    PowerupType_Active
+    PowerupType_Plain,
+    PowerupType_Health,
+    PowerupType_Reserved1,
+    PowerupType_Reserved2,
+    PowerupType_Reserved3,
+    PowerupType_Reserved4,
+    PowerupType_Reserved5,
+    PowerupType_Reserved6,
+    PowerupType_Reserved7,
+    PowerupType_Reserved8,
+    PowerupType_LAST
 };
+static const uint8_t PowerupTypeCount = PowerupType_LAST - 1;
 
 struct Powerup {
     uint16_t x;
@@ -704,7 +725,7 @@ static void PowerupRespawn(PowerupID id)
     }
   
     // Mark the powerup as active
-    Powerups[id].type = PowerupType_Active;
+    Powerups[id].type = (uint8_t) MathRandRangeI(1, PowerupTypeCount);
     
     // Give the powerup a life-time
     Powerups[id].gameTicksLeft = MathRandRangeI(PowerupMinLifetime, PowerupMaxLifetime);
@@ -801,7 +822,8 @@ static SDL_bool GamePreload()
         ImageLoad(&ImageIDPaddleRedTemplate, "Data/Images/PaddleRed.png") &&
         ImageLoad(&ImageIDBackgroundTile, "Data/Images/BackgroundTile.png") &&
         ImageLoad(&ImageIDBackgroundPaddleBar, "Data/Images/BackgroundPaddleBar.png") &&
-        ImageLoad(&ImageIDPowerupPlain, "Data/Images/PowerupPlain.png")
+        ImageLoad(&ImageIDPowerupPlain, "Data/Images/PowerupPlain.png") &&
+        ImageLoad(&ImageIDPowerupHealth, "Data/Images/PowerupHealth.png")
     ))
     {
         return SDL_FALSE;
@@ -1145,13 +1167,10 @@ static void GameUpdate()
     for (uint8_t i = 0; i < SDL_arraysize(Powerups); ++i) {
         --Powerups[i].gameTicksLeft;
         if (Powerups[i].gameTicksLeft <= 0) {
-            switch (Powerups[i].type) {
-                case PowerupType_Active: {
-                    PowerupDeactivate(i);
-                } break;
-                case PowerupType_Inactive: {
-                    PowerupRespawn(i);
-                } break;
+            if (Powerups[i].type == PowerupType_Inactive) {
+                PowerupRespawn(i);
+            } else {
+                PowerupDeactivate(i);
             }
         }
     }
@@ -1238,11 +1257,13 @@ static void GameUpdate()
                     //     at which direction the ball is heading in, and where the collision's
                     //     intersection-rect sits inside the powerup's rect.
                     //
+                    bool didCollide = false;
                     if (ballPowerupIntersect.w >= ballPowerupIntersect.h) {
                         if ((Balls[i].vy > 0 && ballPowerupIntersect.y == powerupRect.y) ||
                             (Balls[i].vy < 0 && (ballPowerupIntersect.y + ballPowerupIntersect.h) == (powerupRect.y + powerupRect.h)))
                         {
                             Balls[i].vy *= -1.f;
+                            didCollide = true;
                         }
                     }
                     if (ballPowerupIntersect.w <= ballPowerupIntersect.h) {
@@ -1250,6 +1271,33 @@ static void GameUpdate()
                             (Balls[i].vx < 0 && (ballPowerupIntersect.x + ballPowerupIntersect.w) == (powerupRect.x + powerupRect.w)))
                         {
                             Balls[i].vx *= -1.f;
+                            didCollide = true;
+                        }
+                    }
+                    
+                    // Apply powerups, as warranted
+                    if (didCollide) {
+                        switch (Powerups[j].type) {
+                            case PowerupType_Plain:
+                            case PowerupType_Reserved1:
+                            case PowerupType_Reserved2:
+                            case PowerupType_Reserved3:
+                            case PowerupType_Reserved4:
+                            case PowerupType_Reserved5:
+                            case PowerupType_Reserved6:
+                            case PowerupType_Reserved7:
+                            case PowerupType_Reserved8:
+                            {
+                                // Do nothing for 'Plain' powerups.
+                            } break;
+                                
+                            case PowerupType_Health: {
+                                // Apply health, but only if the ball is marked with a paddle color.
+                                int8_t healPaddle = PaddleIDForBallType(Balls[i].type);
+                                if (healPaddle >= 0) {
+                                    PaddleHeal(healPaddle);
+                                }
+                            } break;
                         }
                     }
                 }
@@ -1334,16 +1382,30 @@ static void GameDraw()
     // Powerups
     r.w = r.h = PowerupSize;
     for (uint8_t i = 0; i < SDL_arraysize(Powerups); ++i) {
+        if (Powerups[i].type != PowerupType_Inactive) {
+            r.x = Powerups[i].x;
+        }
+        
+        r.x = Powerups[i].x;
+        r.y = Powerups[i].y;
+
+        ImageID imageID;
         switch (Powerups[i].type) {
-            case PowerupType_Inactive:
-                continue;
-            case PowerupType_Active: {
-                r.x = Powerups[i].x;
-                r.y = Powerups[i].y;
-//                SDL_FillRect(Screen, &r, SDL_MapRGB(Screen->format, 0xcc, 0xcc, 0xcc));
-                SDL_BlitSurface(Images[ImageIDPowerupPlain], NULL, Screen, &r);
-//                TextDraw(FontIDHUDScores, 0, 0, 0, r.x + 4, r.y + 4, "%d", i);
-            } break;
+            case PowerupType_Inactive:  imageID = 0;                        break;
+            case PowerupType_Plain:     imageID = ImageIDPowerupPlain;      break;
+            case PowerupType_Health:    imageID = ImageIDPowerupHealth;     break;
+            case PowerupType_Reserved1: imageID = ImageIDPowerupPlain;      break;
+            case PowerupType_Reserved2: imageID = ImageIDPowerupPlain;      break;
+            case PowerupType_Reserved3: imageID = ImageIDPowerupPlain;      break;
+            case PowerupType_Reserved4: imageID = ImageIDPowerupPlain;      break;
+            case PowerupType_Reserved5: imageID = ImageIDPowerupPlain;      break;
+            case PowerupType_Reserved6: imageID = ImageIDPowerupPlain;      break;
+            case PowerupType_Reserved7: imageID = ImageIDPowerupPlain;      break;
+            case PowerupType_Reserved8: imageID = ImageIDPowerupPlain;      break;
+            default:                                                        break;
+        }
+        if (imageID) {
+            SDL_BlitSurface(Images[imageID], NULL, Screen, &r);
         }
     }
 
