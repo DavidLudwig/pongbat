@@ -1601,6 +1601,7 @@ static uint8_t AppInit()
         SDL_Log("%s, SDL_CreateWindowAndRenderer failed: %s", __FUNCTION__, SDL_GetError());
         return 1;
     }
+    SDL_SetWindowTitle(Window, "Pongbat");
     
     if (SDL_RenderSetLogicalSize(Renderer, ScreenWidth, ScreenHeight)) {
         SDL_Log("%s, SDL_RenderSetLogicalSize failed: %s", __FUNCTION__, SDL_GetError());
