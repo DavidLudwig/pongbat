@@ -59,6 +59,8 @@ emcc src/pongbat.cpp -s USE_SDL=2 -O3 -std=c++11 \
 	--preload-file "Data/Images/BackgroundPaddleBar.png" \
 	--preload-file "Data/Images/PowerupPlain.png" \
 	--preload-file "Data/Images/PowerupHealth.png" \
+	--preload-file "Data/Images/PowerupAddBall.png" \
+	--preload-file "Data/Images/PowerupRemoveBall.png" \
 	|| die "Compile failed"
 
 # Install

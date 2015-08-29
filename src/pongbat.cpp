@@ -89,6 +89,8 @@ static ImageID ImageIDBackgroundTile;
 static ImageID ImageIDBackgroundPaddleBar;
 static ImageID ImageIDPowerupPlain;
 static ImageID ImageIDPowerupHealth;
+static ImageID ImageIDPowerupAddBall;
+static ImageID ImageIDPowerupRemoveBall;
 
 // ImageIDAlloc -- allocate a new ImageID
 ImageID ImageIDAlloc()
@@ -499,14 +501,13 @@ struct Ball {
             default:                return NULL;
         }
     }
-} Balls[32];
-static uint8_t BallCount = 0;
+} Balls[8];
 
 // BallRespawn -- [re]spawns an existing ball
-// TODO: re-jigger this into a plain, BallSpawn() function, which adjusts BallCount as appropriate
 void BallRespawn(uint8_t ballIndex)
 {
-    SDL_assert_paranoid(ballIndex < BallCount);
+//    SDL_Log("BallRespawn(%u)", ballIndex);
+    SDL_assert_paranoid(ballIndex < SDL_arraysize(Balls));
     Balls[ballIndex].cx = ScreenWidth / 2.f;
     Balls[ballIndex].cy = (ScreenHeight - HUDHeight) / 2.f;
     Balls[ballIndex].vx = MathRandRangeF(0.5f, 3.0f) * (MathRandRangeI(0,1) ? 1.f : -1.f);
@@ -645,14 +646,14 @@ enum : uint8_t {
     PowerupType_Inactive = 0,
     PowerupType_Plain,
     PowerupType_Health,
+    PowerupType_AddBall,
+    PowerupType_RemoveBall,
     PowerupType_Reserved1,
     PowerupType_Reserved2,
     PowerupType_Reserved3,
     PowerupType_Reserved4,
     PowerupType_Reserved5,
     PowerupType_Reserved6,
-    PowerupType_Reserved7,
-    PowerupType_Reserved8,
     PowerupType_LAST
 };
 static const uint8_t PowerupTypeCount = PowerupType_LAST - 1;
@@ -726,6 +727,8 @@ static void PowerupRespawn(PowerupID id)
   
     // Mark the powerup as active
     Powerups[id].type = (uint8_t) MathRandRangeI(1, PowerupTypeCount);
+//    Powerups[id].type = PowerupType_AddBall;
+//    Powerups[id].type = (uint8_t) MathRandRangeI(PowerupType_AddBall, PowerupType_RemoveBall);
     
     // Give the powerup a life-time
     Powerups[id].gameTicksLeft = MathRandRangeI(PowerupMinLifetime, PowerupMaxLifetime);
@@ -823,7 +826,9 @@ static SDL_bool GamePreload()
         ImageLoad(&ImageIDBackgroundTile, "Data/Images/BackgroundTile.png") &&
         ImageLoad(&ImageIDBackgroundPaddleBar, "Data/Images/BackgroundPaddleBar.png") &&
         ImageLoad(&ImageIDPowerupPlain, "Data/Images/PowerupPlain.png") &&
-        ImageLoad(&ImageIDPowerupHealth, "Data/Images/PowerupHealth.png")
+        ImageLoad(&ImageIDPowerupHealth, "Data/Images/PowerupHealth.png") &&
+        ImageLoad(&ImageIDPowerupAddBall, "Data/Images/PowerupAddBall.png") &&
+        ImageLoad(&ImageIDPowerupRemoveBall, "Data/Images/PowerupRemoveBall.png")
     ))
     {
         return SDL_FALSE;
@@ -915,7 +920,6 @@ static void GameInit(uint8_t initFlags)
     }
     
     // Spawn a ball
-    BallCount = 1;
     BallRespawn(0);
 }
 
@@ -1176,7 +1180,7 @@ static void GameUpdate()
     }
     
     // Ball updates
-    for (uint8_t i = 0; i < BallCount; ++i) {
+    for (uint8_t i = 0; i < SDL_arraysize(Balls); ++i) {
         if (Balls[i].type == BallTypeInactive) {
             continue;
         }
@@ -1285,8 +1289,6 @@ static void GameUpdate()
                             case PowerupType_Reserved4:
                             case PowerupType_Reserved5:
                             case PowerupType_Reserved6:
-                            case PowerupType_Reserved7:
-                            case PowerupType_Reserved8:
                             {
                                 // Do nothing for 'Plain' powerups.
                             } break;
@@ -1296,6 +1298,35 @@ static void GameUpdate()
                                 int8_t healPaddle = PaddleIDForBallType(Balls[i].type);
                                 if (healPaddle >= 0) {
                                     PaddleHeal(healPaddle);
+                                }
+                            } break;
+                                
+                            case PowerupType_AddBall: {
+                                // Look for an unused slot in Balls[].  If one is found,
+                                // respawn that ball.
+                                uint8_t newBallID;
+                                for (newBallID = 0; newBallID < SDL_arraysize(Balls); ++newBallID) {
+                                    if (Balls[newBallID].type == BallTypeInactive) {
+                                        break;
+                                    }
+                                }
+                                if (newBallID < SDL_arraysize(Balls)) {
+                                    BallRespawn(newBallID);
+                                }
+                            } break;
+                            
+                            case PowerupType_RemoveBall: {
+                                // Remove the ball, but only if the number of
+                                // active balls is greater than one.  (I.e. leave
+                                // at least one ball on-screen.)
+                                uint8_t count = 0;
+                                for (uint8_t k = 0; k < SDL_arraysize(Balls); ++k) {
+                                    if (Balls[k].type != BallTypeInactive) {
+                                        if (++count > 1) {
+                                            Balls[i].type = BallTypeInactive;
+                                            break;
+                                        }
+                                    }
                                 }
                             } break;
                         }
@@ -1394,14 +1425,14 @@ static void GameDraw()
             case PowerupType_Inactive:  imageID = 0;                        break;
             case PowerupType_Plain:     imageID = ImageIDPowerupPlain;      break;
             case PowerupType_Health:    imageID = ImageIDPowerupHealth;     break;
+            case PowerupType_AddBall:   imageID = ImageIDPowerupAddBall;    break;
+            case PowerupType_RemoveBall:imageID = ImageIDPowerupRemoveBall; break;
             case PowerupType_Reserved1: imageID = ImageIDPowerupPlain;      break;
             case PowerupType_Reserved2: imageID = ImageIDPowerupPlain;      break;
             case PowerupType_Reserved3: imageID = ImageIDPowerupPlain;      break;
             case PowerupType_Reserved4: imageID = ImageIDPowerupPlain;      break;
             case PowerupType_Reserved5: imageID = ImageIDPowerupPlain;      break;
             case PowerupType_Reserved6: imageID = ImageIDPowerupPlain;      break;
-            case PowerupType_Reserved7: imageID = ImageIDPowerupPlain;      break;
-            case PowerupType_Reserved8: imageID = ImageIDPowerupPlain;      break;
             default:                                                        break;
         }
         if (imageID) {
@@ -1417,7 +1448,7 @@ static void GameDraw()
     }
     
     // Balls
-    for (uint8_t i = 0; i < BallCount; ++i) {
+    for (uint8_t i = 0; i < SDL_arraysize(Balls); ++i) {
         if (Balls[i].type == BallTypeInactive) {
             continue;
         }
