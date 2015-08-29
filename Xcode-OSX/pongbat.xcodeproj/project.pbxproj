@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		75A6B3821B4C94080079EC48 /* Data in Resources */ = {isa = PBXBuildFile; fileRef = 75A6B3811B4C94080079EC48 /* Data */; };
 		75A7886F1B48718000B929D1 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 75A7886E1B48718000B929D1 /* Images.xcassets */; };
-		75A7888A1B48736200B929D1 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 75A788881B48736200B929D1 /* main.cpp */; };
+		75A7888A1B48736200B929D1 /* pongbat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 75A788881B48736200B929D1 /* pongbat.cpp */; };
 		75A7889A1B4873E100B929D1 /* SDL2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75A788931B4873A900B929D1 /* SDL2.framework */; };
 /* End PBXBuildFile section */
 
@@ -50,7 +50,7 @@
 		75A788641B48718000B929D1 /* pongbat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = pongbat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		75A788681B48718000B929D1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		75A7886E1B48718000B929D1 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
-		75A788881B48736200B929D1 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; usesTabs = 0; };
+		75A788881B48736200B929D1 /* pongbat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = pongbat.cpp; sourceTree = "<group>"; usesTabs = 0; };
 		75A7888B1B4873A900B929D1 /* SDL.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = SDL.xcodeproj; path = ../external/SDL/Xcode/SDL/SDL.xcodeproj; sourceTree = "<group>"; };
 		75C89AE91B55917D00A48750 /* stb_truetype.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_truetype.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -110,7 +110,7 @@
 			children = (
 				75C89AE91B55917D00A48750 /* stb_truetype.h */,
 				75A6B37C1B4C91290079EC48 /* stb_image.h */,
-				75A788881B48736200B929D1 /* main.cpp */,
+				75A788881B48736200B929D1 /* pongbat.cpp */,
 			);
 			name = src;
 			path = ../src;
@@ -233,7 +233,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				75A7888A1B48736200B929D1 /* main.cpp in Sources */,
+				75A7888A1B48736200B929D1 /* pongbat.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
