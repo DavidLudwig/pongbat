@@ -1,5 +1,5 @@
 # Immortal Pongbat #
-*A work-in-progress clone of the classic, MacOS game, Mortal Pongbat*
+*A work-in-progress clone of the classic, Mac game, Mortal Pongbat*
 
 Live version temporarily at https://alum.wpi.edu/~davidl/pongbat/
 
