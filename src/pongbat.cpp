@@ -283,7 +283,7 @@ SDL_bool FontBake(FontID fontID, const unsigned char * rawFontData)
     
     // Get pointers to output params
     unsigned char * pixels = Fonts[fontID].baked.bitmap;
-    FontChar * chardata = Fonts[i].baked.chars;
+    FontChar * chardata = Fonts[fontID].baked.chars;
     
     if (!stbtt_InitFont(&f, rawFontData, offset)) {
         return SDL_FALSE;
