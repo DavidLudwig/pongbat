@@ -1135,7 +1135,7 @@ static void GameUpdate()
         if (Lasers[i].gameTicksUntilCut == 0) {
             SDL_Rect laserRect;
             if (Lasers[i].GetRect(&laserRect, i) == 0) {
-                for (uint8_t j; j < SDL_arraysize(Paddles); ++j) {
+                for (uint8_t j = 0; j < SDL_arraysize(Paddles); ++j) {
                     if (i != j) {
                         SDL_Rect paddleRect, intersection;
                         Paddles[j].GetRect(&paddleRect);
@@ -1149,14 +1149,14 @@ static void GameUpdate()
 #else
                                 SDL_FillRect(paddleImage, &intersection, SDL_MapRGBA(paddleImage->format, 0x00, 0x00, 0x00, 0x00));
 #endif
-                            }
                             
-                            if ((intersection.y <= Paddles[j].cutTop) && ((intersection.y + intersection.h) >= Paddles[j].cutTop)) {
-                                Paddles[j].cutTop = Paddle::CalcEdge(paddleImage, intersection.y + intersection.h, PaddleMaxH - 1, 1);
-                            }
-                            if ((intersection.y <= Paddles[j].cutBottom) && ((intersection.y + intersection.h) >= Paddles[j].cutBottom)) {
-                                // TODO: explain, in comments, why '1' is added to CalcEdge result.  Yes, this is needed, maybe.
-                                Paddles[j].cutBottom = 1 + Paddle::CalcEdge(paddleImage, intersection.y, 0, -1);
+                                if ((intersection.y <= Paddles[j].cutTop) && ((intersection.y + intersection.h) >= Paddles[j].cutTop)) {
+                                    Paddles[j].cutTop = Paddle::CalcEdge(paddleImage, intersection.y + intersection.h, PaddleMaxH - 1, 1);
+                                }
+                                if ((intersection.y <= Paddles[j].cutBottom) && ((intersection.y + intersection.h) >= Paddles[j].cutBottom)) {
+                                    // TODO: explain, in comments, why '1' is added to CalcEdge result.  Yes, this is needed, maybe.
+                                    Paddles[j].cutBottom = 1 + Paddle::CalcEdge(paddleImage, intersection.y, 0, -1);
+                                }
                             }
                         }
                     }
@@ -1433,7 +1433,7 @@ static void GameDraw()
             case PowerupType_Reserved4: imageID = ImageIDPowerupPlain;      break;
             case PowerupType_Reserved5: imageID = ImageIDPowerupPlain;      break;
             case PowerupType_Reserved6: imageID = ImageIDPowerupPlain;      break;
-            default:                                                        break;
+            default:                    imageID = 0;                        break;
         }
         if (imageID) {
             SDL_BlitSurface(Images[imageID], NULL, Screen, &r);
