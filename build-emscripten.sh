@@ -64,7 +64,8 @@ emcc src/pongbat.cpp -s USE_SDL=2 -O3 -std=c++11 \
 	|| die "Compile failed"
 
 # Install
-cd "$BUILD_DIR" || die "Can't 'cd' to 'BUILD_DIR'"
+pushd "$BUILD_DIR" || die "Can't 'pushd' (aka. stack-enabled 'cd') into 'BUILD_DIR' (${BUILD_DIR})"
+mv -v pongbat.html index.html
 if [ "$PONGBAT_INSTALL_DIR" != "" ]; then
 	echo "Installing..."
 	if echo "$PONGBAT_INSTALL_DIR" | grep -q ":" > /dev/null; then
@@ -76,5 +77,6 @@ if [ "$PONGBAT_INSTALL_DIR" != "" ]; then
 else
 	echo "Ignoring install, as neither the env-var PONGBAT_INSTALL_DIR, nor the build-script's 1st arg, were set."
 fi
+popd
 
 echo "Script is complete ( $0 )"
