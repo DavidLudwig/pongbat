@@ -49,7 +49,7 @@ rm -rf pongbat* || die "Couldn't clean old files"
 echo "Building..."
 emcc src/pongbat.cpp -s USE_SDL=2 -O3 -std=c++11 \
 	-o "$BUILD_DIR/pongbat.html" \
-	--preload-file "Data/Fonts/FogSans.ttf" \
+	--preload-file "Data/Fonts/HussarPrint/HussarPrintA.ttf" \
 	--preload-file "Data/Images/BallBlue.png" \
 	--preload-file "Data/Images/BallNoPlayer.png" \
 	--preload-file "Data/Images/BallRed.png" \

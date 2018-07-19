@@ -263,7 +263,7 @@ union Font {
 // Predefined fonts
 static FontID FontIDHUDScores = -1;
 static Font Fonts[] = {
-    { &FontIDHUDScores, 0, 20.0f, "Data/Fonts/FogSans.ttf" }
+    { &FontIDHUDScores, 0, 18.0f, "Data/Fonts/HussarPrint/HussarPrintA.ttf" }
 };
 
 // FontBake -- 'Bakes' (prepares) a single font for rendering
@@ -427,7 +427,7 @@ static const uint16_t HUDLaserRechargeWidth = 80;
 static const uint16_t HUDLaserRechargeHeight = 16;
 static const uint16_t HUDLaserRechargeXOffset = 180;
 static const int16_t HUDScoresXOffsets[] = { 35, 530 };
-static const int16_t HUDScoresYOffset = 5;
+static const int16_t HUDScoresYOffset = 8;
 
 
 
